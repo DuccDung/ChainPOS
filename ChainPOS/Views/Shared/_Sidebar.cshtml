@@ -1,0 +1,191 @@
+@using ChainPOS.Constants
+@using System.Security.Claims
+@{
+    var appRole = ViewData["AppRole"]?.ToString() ?? "Admin";
+    var active = ViewData["ActiveMenu"]?.ToString() ?? "dashboard";
+    var userName = User.FindFirstValue(AppClaimTypes.FullName) ?? User.Identity?.Name ?? "User";
+    var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+    var initial = string.IsNullOrWhiteSpace(userName) ? "U" : userName.Trim()[0].ToString().ToUpperInvariant();
+
+    string NavClass(string key)
+        => active == key
+            ? "nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl bg-orange-500 text-white font-semibold shadow-sm"
+            : "nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-600 hover:bg-orange-50 hover:text-orange-600 font-medium";
+
+    string Dot(string key) => active == key ? "<span class=\"nav-active-dot ml-auto\"></span>" : string.Empty;
+}
+
+<aside id="app-sidebar" class="sidebar fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-orange-100 flex flex-col">
+    <div class="h-20 flex items-center gap-3 px-5 border-b border-orange-100">
+        <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-400 rounded-xl flex items-center justify-center shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h18v4H3V3zm2 6h14v12H5V9zm3 3h8m-8 4h5" />
+            </svg>
+        </div>
+        <div>
+            <h1 class="font-bold text-gray-900 text-lg">ChainPOS</h1>
+            <p class="text-xs text-orange-500 font-medium">SaaS Retail Suite</p>
+        </div>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto px-3 py-4">
+        <p class="px-3 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Overview</p>
+        <a asp-area="@appRole" asp-controller="Dashboard" asp-action="Index" class="@NavClass("dashboard")">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l9-9 9 9M5 10v10h14V10" />
+            </svg>
+            <span>Dashboard</span>
+            @Html.Raw(Dot("dashboard"))
+        </a>
+
+        @if (appRole == "Admin")
+        {
+            <p class="px-3 mt-5 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Platform</p>
+            <a asp-area="Admin" asp-controller="Owners" asp-action="Index" class="@NavClass("owners")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Owners</span>
+                @Html.Raw(Dot("owners"))
+            </a>
+            <a asp-area="Admin" asp-controller="Tenants" asp-action="Index" class="@NavClass("tenants")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16M9 7h1m-1 4h1m4-4h1m-1 4h1" />
+                </svg>
+                <span>Tenants</span>
+                @Html.Raw(Dot("tenants"))
+            </a>
+            <a href="#" class="@NavClass("plans")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5 1h.01M14 15h.01M5 5h14v14H5z" />
+                </svg>
+                <span>Plans</span>
+            </a>
+            <a href="#" class="@NavClass("payments")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9" />
+                </svg>
+                <span>Payments</span>
+            </a>
+            <p class="px-3 mt-5 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">System</p>
+            <a href="#" class="@NavClass("reports")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m4 6V7m4 10v-3M5 21h14" />
+                </svg>
+                <span>Reports</span>
+            </a>
+            <a href="#" class="@NavClass("audit")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M5 5h14v14H5V5z" />
+                </svg>
+                <span>Audit Logs</span>
+            </a>
+            <a href="#" class="@NavClass("settings")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317a1.724 1.724 0 013.35 0 1.724 1.724 0 002.573 1.066 1.724 1.724 0 012.369 2.369 1.724 1.724 0 001.066 2.573 1.724 1.724 0 010 3.35 1.724 1.724 0 00-1.066 2.573 1.724 1.724 0 01-2.369 2.369 1.724 1.724 0 00-2.573 1.066 1.724 1.724 0 01-3.35 0 1.724 1.724 0 00-2.573-1.066 1.724 1.724 0 01-2.369-2.369 1.724 1.724 0 00-1.066-2.573 1.724 1.724 0 010-3.35 1.724 1.724 0 001.066-2.573 1.724 1.724 0 012.369-2.369 1.724 1.724 0 002.573-1.066z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Settings</span>
+            </a>
+        }
+        else if (appRole == "Owner")
+        {
+            <p class="px-3 mt-5 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Management</p>
+            <a href="#" class="@NavClass("stores")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16" />
+                </svg>
+                <span>Stores</span>
+            </a>
+            <a href="#" class="@NavClass("staff")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Staff</span>
+            </a>
+            <a href="#" class="@NavClass("products")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10" />
+                </svg>
+                <span>Products</span>
+            </a>
+            <a href="#" class="@NavClass("inventory")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16" />
+                </svg>
+                <span>Inventory</span>
+            </a>
+            <p class="px-3 mt-5 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Sales</p>
+            <a href="#" class="@NavClass("pos")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h.01M11 15h2M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                </svg>
+                <span>POS</span>
+            </a>
+            <a href="#" class="@NavClass("orders")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
+                </svg>
+                <span>Orders</span>
+            </a>
+            <a href="#" class="@NavClass("reports")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m4 6V7m4 10v-3M5 21h14" />
+                </svg>
+                <span>Reports</span>
+            </a>
+        }
+        else
+        {
+            <p class="px-3 mt-5 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Store Work</p>
+            <a href="#" class="@NavClass("pos")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h.01M11 15h2M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                </svg>
+                <span>POS</span>
+            </a>
+            <a href="#" class="@NavClass("inventory")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16" />
+                </svg>
+                <span>Inventory</span>
+            </a>
+            <a href="#" class="@NavClass("shifts")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Shifts</span>
+            </a>
+            <a href="#" class="@NavClass("orders")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
+                </svg>
+                <span>Orders</span>
+            </a>
+            <a href="#" class="@NavClass("profile")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A7 7 0 0112 15a7 7 0 016.879 2.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Profile</span>
+            </a>
+        }
+    </nav>
+
+    <div class="border-t border-orange-100 p-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-400 rounded-full flex items-center justify-center text-white text-sm font-bold">@initial</div>
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-semibold text-gray-800 truncate">@userName</p>
+                <p class="text-xs text-gray-400 truncate">@userEmail</p>
+            </div>
+            <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="text-gray-300 hover:text-orange-500" title="Logout">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H9m4 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+</aside>

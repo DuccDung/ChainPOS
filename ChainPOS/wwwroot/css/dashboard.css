@@ -1,0 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+* { box-sizing: border-box; }
+
+body { font-family: 'Inter', sans-serif; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #fafafa; }
+::-webkit-scrollbar-thumb { background: #fed7aa; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #f97316; }
+
+.sidebar { transition: transform 0.3s ease; }
+@media (max-width: 1024px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); box-shadow: 0 0 50px rgba(0,0,0,0.2); }
+  .main-content { margin-left: 0 !important; }
+}
+
+.kpi-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.kpi-card:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(249,115,22,0.15); }
+.nav-link { transition: all 0.15s ease; }
+.page-enter { animation: pageIn 0.3s ease; }
+@keyframes pageIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+tbody tr { transition: background 0.1s ease; }
+.chart-wrap { position: relative; }
+.nav-active-dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.7); flex-shrink:0; }
+.badge-active { background:#dcfce7; color:#166534; }
+.badge-inactive { background:#fee2e2; color:#991b1b; }
+.badge-pending { background:#fef3c7; color:#92400e; }
+.badge-processing { background:#dbeafe; color:#1e40af; }
+.badge-delivered { background:#dcfce7; color:#166534; }
+.badge-cancelled { background:#fee2e2; color:#991b1b; }
+.badge-lowstock { background:#fff7ed; color:#c2410c; }
+.modal-backdrop { animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+.modal-box { animation: modalIn 0.25s ease; }
+@keyframes modalIn { from { opacity:0; transform:scale(0.95) translateY(-10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+@media (max-width: 768px) {
+  .data-table { font-size: 0.8rem; }
+  .data-table th, .data-table td { padding: 8px 10px; }
+}

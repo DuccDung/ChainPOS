@@ -1,0 +1,89 @@
+@using ChainPOS.Constants
+@model ChainPOS.ViewModels.Admin.Tenants.TenantIndexViewModel
+@{
+    ViewData["Title"] = "Tenants";
+    ViewData["ActiveMenu"] = "tenants";
+
+    string StatusClass(string status) => status switch
+    {
+        TenantStatuses.Active => "bg-green-50 text-green-700 border-green-100",
+        TenantStatuses.Suspended => "bg-amber-50 text-amber-700 border-amber-100",
+        TenantStatuses.Cancelled => "bg-red-50 text-red-700 border-red-100",
+        TenantStatuses.Trial => "bg-blue-50 text-blue-700 border-blue-100",
+        _ => "bg-gray-50 text-gray-600 border-gray-100"
+    };
+}
+
+<div class="flex flex-col gap-5">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Tenant Management</h1>
+        <p class="text-sm text-gray-500 mt-1">Monitor tenant status, owner and operating scale.</p>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-orange-100 shadow-sm">
+        <form asp-action="Index" method="get" class="grid grid-cols-1 md:grid-cols-[1fr_180px_auto] gap-3 p-5 border-b border-gray-50">
+            <input asp-for="Search" placeholder="Search tenant, owner or email..." class="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white" />
+            <select asp-for="Status" class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white">
+                <option value="">All statuses</option>
+                <option value="@TenantStatuses.Active">Active</option>
+                <option value="@TenantStatuses.Suspended">Suspended</option>
+                <option value="@TenantStatuses.Cancelled">Cancelled</option>
+                <option value="@TenantStatuses.Trial">Trial</option>
+            </select>
+            <button type="submit" class="rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-600">Filter</button>
+        </form>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-100">
+                <thead class="bg-orange-50/60">
+                    <tr class="text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+                        <th class="px-5 py-3">Tenant</th>
+                        <th class="px-5 py-3">Owner</th>
+                        <th class="px-5 py-3">Scale</th>
+                        <th class="px-5 py-3">Status</th>
+                        <th class="px-5 py-3 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50 bg-white">
+                    @if (Model.Tenants.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="5" class="px-5 py-10 text-center text-sm text-gray-400">No tenants found.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var tenant in Model.Tenants)
+                        {
+                            <tr class="hover:bg-orange-50/40">
+                                <td class="px-5 py-4">
+                                    <div class="font-semibold text-gray-900">@tenant.Name</div>
+                                    <div class="text-xs text-gray-400">@tenant.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</div>
+                                </td>
+                                <td class="px-5 py-4">
+                                    <div class="font-medium text-gray-800">@(string.IsNullOrWhiteSpace(tenant.OwnerName) ? "No owner" : tenant.OwnerName)</div>
+                                    <div class="text-xs text-gray-500">@tenant.OwnerEmail</div>
+                                </td>
+                                <td class="px-5 py-4 text-sm text-gray-600">
+                                    <span class="font-semibold text-gray-900">@tenant.StoreCount</span> stores
+                                    <span class="mx-2 text-gray-300">/</span>
+                                    <span class="font-semibold text-gray-900">@tenant.StaffCount</span> staff
+                                </td>
+                                <td class="px-5 py-4">
+                                    <span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold @StatusClass(tenant.Status)">@tenant.Status</span>
+                                </td>
+                                <td class="px-5 py-4 text-right">
+                                    <a asp-action="Details" asp-route-id="@tenant.Id" class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-orange-200 hover:text-orange-600">Details</a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="px-5 py-4 border-t border-gray-50 text-sm text-gray-500">
+            Showing @Model.TotalTenants tenant(s).
+        </div>
+    </div>
+</div>

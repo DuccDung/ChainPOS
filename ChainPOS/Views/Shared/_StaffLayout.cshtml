@@ -1,0 +1,27 @@
+@{
+    ViewData["AppRole"] = "Staff";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ChainPOS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+</head>
+<body class="bg-orange-50 font-['Inter'] text-gray-800">
+    <partial name="_Sidebar" />
+    <div class="ml-64 min-h-screen flex flex-col main-content">
+        <partial name="_Topbar" />
+        <main class="flex-1 p-6 page-enter">
+            <partial name="_Alert" />
+            @RenderBody()
+        </main>
+    </div>
+    <partial name="_ConfirmModal" />
+    <script src="~/js/dashboard.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

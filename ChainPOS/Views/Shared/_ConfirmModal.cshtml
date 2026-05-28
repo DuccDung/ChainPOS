@@ -1,0 +1,17 @@
+<div id="confirm-modal" class="hidden fixed inset-0 z-50">
+    <div class="modal-backdrop absolute inset-0 bg-black/40" onclick="closeConfirmModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="modal-box w-full max-w-md rounded-2xl bg-white shadow-xl border border-orange-100">
+            <div class="p-5 border-b border-gray-100">
+                <h3 data-confirm-title class="font-bold text-gray-900 text-lg">Confirm action</h3>
+            </div>
+            <div class="p-5">
+                <p data-confirm-message class="text-sm text-gray-600">Are you sure?</p>
+            </div>
+            <div class="px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-2">
+                <button type="button" class="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 font-semibold" onclick="closeConfirmModal()">Cancel</button>
+                <button type="button" class="px-4 py-2 rounded-xl bg-orange-500 text-white font-semibold" onclick="submitConfirmedForm()">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>

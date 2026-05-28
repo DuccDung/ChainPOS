@@ -1,0 +1,150 @@
+@model ChainPOS.ViewModels.Dashboard.DashboardViewModel
+
+<div class="bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl p-6 mb-6 flex items-center justify-between overflow-hidden relative">
+    <div class="absolute right-0 top-0 w-64 h-full opacity-10">
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" class="w-full h-full text-white fill-current">
+            <path d="M44.5,-76.3C59.5,-69.9,74.5,-61.1,81.8,-47.7C89.2,-34.3,89,-16.2,85.3,-0.2C81.7,15.8,74.7,31.6,65.3,44.7C55.9,57.8,44.1,68.3,30.5,74.9C16.9,81.5,1.5,84.2,-14.7,82.8C-30.9,81.4,-47.9,76,-60.7,65.6C-73.5,55.2,-82.1,39.8,-86.1,23.1C-90.1,6.4,-89.5,-11.6,-82.7,-26.5C-75.9,-41.4,-63,-53.1,-49.1,-60.3C-35.2,-67.5,-20.3,-70.2,-4.4,-63.8C11.4,-57.4,29.5,-82.7,44.5,-76.3Z" transform="translate(100 100)" />
+        </svg>
+    </div>
+    <div class="relative z-10">
+        <p class="text-orange-100 text-sm font-medium mb-1">Good morning,</p>
+        <h3 class="text-white text-2xl font-bold mb-1">@Model.WelcomeTitle</h3>
+        <p class="text-orange-100 text-sm">@Model.WelcomeDescription</p>
+    </div>
+    <div class="hidden md:flex items-center gap-3 relative z-10">
+        <a href="@Model.PrimaryActionUrl" class="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 border border-white border-opacity-30 text-white text-sm font-medium rounded-xl transition-all">@Model.PrimaryActionText</a>
+        <a href="@Model.SecondaryActionUrl" class="px-4 py-2 bg-white text-orange-600 text-sm font-semibold rounded-xl hover:shadow-lg transition-all">@Model.SecondaryActionText</a>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
+    @foreach (var metric in Model.Metrics)
+    {
+        var iconBg = metric.Tone switch
+        {
+            "amber" => "bg-amber-100 text-amber-500",
+            "yellow" => "bg-yellow-100 text-yellow-600",
+            "emerald" => "bg-emerald-100 text-emerald-500",
+            _ => "bg-orange-100 text-orange-500"
+        };
+        var badgeTone = metric.Tone == "emerald" ? "text-green-600 bg-green-50" : "text-amber-600 bg-amber-50";
+
+        <div class="kpi-card bg-white rounded-2xl p-5 border border-orange-100 shadow-sm">
+            <div class="flex items-start justify-between mb-4">
+                <div class="w-11 h-11 @iconBg rounded-xl flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        @if (metric.Icon == "users")
+                        {
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        }
+                        else if (metric.Icon == "building")
+                        {
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16M9 7h1m-1 4h1m4-4h1m-1 4h1" />
+                        }
+                        else if (metric.Icon == "box")
+                        {
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        }
+                        else if (metric.Icon == "clock")
+                        {
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        }
+                        else if (metric.Icon == "order")
+                        {
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
+                        }
+                        else
+                        {
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        }
+                    </svg>
+                </div>
+                <span class="text-xs font-semibold @badgeTone px-2 py-0.5 rounded-full">@metric.Badge</span>
+            </div>
+            <p class="text-3xl font-bold text-gray-900 mb-1">@metric.Value</p>
+            <p class="text-sm text-gray-500 font-medium">@metric.Label</p>
+            <div class="mt-3 flex items-center gap-1 text-xs text-green-600 font-medium">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+                <span>@metric.Note</span>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-6">
+    <div class="xl:col-span-2 bg-white rounded-2xl p-5 border border-orange-100 shadow-sm">
+        <div class="flex items-center justify-between mb-5">
+            <div>
+                <h3 class="font-bold text-gray-900">Revenue vs Expenses</h3>
+                <p class="text-xs text-gray-400 mt-0.5">January - June 2026</p>
+            </div>
+            <div class="flex items-center gap-4 text-xs font-medium">
+                <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-orange-500 inline-block"></span>Revenue</span>
+                <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-amber-300 inline-block"></span>Expenses</span>
+            </div>
+        </div>
+        <div class="chart-wrap h-64">
+            <canvas id="salesChart"></canvas>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+            <h3 class="font-bold text-gray-900">Recent Activity</h3>
+            <span class="text-xs text-gray-400">Today</span>
+        </div>
+        <div class="p-4 space-y-4 overflow-y-auto max-h-80">
+            @foreach (var item in Model.Activities)
+            {
+                var toneClass = item.Tone switch
+                {
+                    "amber" => "bg-amber-100 text-amber-500",
+                    "emerald" => "bg-emerald-100 text-emerald-500",
+                    _ => "bg-orange-100 text-orange-500"
+                };
+                <div class="flex gap-3">
+                    <div class="w-8 h-8 @toneClass rounded-lg flex-shrink-0 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-800 font-medium">@item.Title</p>
+                        <p class="text-xs text-gray-400">@item.Description</p>
+                        <p class="text-xs text-orange-400 mt-0.5">@item.TimeText</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<script>
+    if (window.Chart && document.getElementById('salesChart')) {
+        new Chart(document.getElementById('salesChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [
+                    { label: 'Revenue', data: [85000, 92000, 78000, 105000, 124500, null], backgroundColor: 'rgba(249,115,22,0.85)', borderRadius: 8, borderSkipped: false },
+                    { label: 'Expenses', data: [62000, 68000, 58000, 75000, 86300, null], backgroundColor: 'rgba(251,191,36,0.75)', borderRadius: 8, borderSkipped: false }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                    y: {
+                        grid: { color: 'rgba(0,0,0,0.04)' },
+                        beginAtZero: true,
+                        ticks: { font: { size: 11 }, callback: v => '$' + (v / 1000) + 'K' }
+                    }
+                }
+            }
+        });
+    }
+</script>

@@ -1,0 +1,84 @@
+@using ChainPOS.Constants
+@model ChainPOS.ViewModels.Admin.Tenants.TenantDetailsViewModel
+@{
+    ViewData["Title"] = "Tenant Details";
+    ViewData["ActiveMenu"] = "tenants";
+}
+
+<div class="space-y-5">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">@Model.Name</h1>
+            <p class="text-sm text-gray-500 mt-1">@Model.Email</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a asp-action="Index" class="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:border-orange-200 hover:text-orange-600">Back</a>
+            @if (Model.Status != TenantStatuses.Active)
+            {
+                <form id="tenant-activate-@Model.Id" asp-action="Activate" asp-route-id="@Model.Id" method="post" onsubmit="return openConfirmModal(this.id, 'Activate tenant', 'Tenant users will be able to sign in again.');">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700">Activate</button>
+                </form>
+            }
+            @if (Model.Status != TenantStatuses.Suspended)
+            {
+                <form id="tenant-suspend-@Model.Id" asp-action="Suspend" asp-route-id="@Model.Id" method="post" onsubmit="return openConfirmModal(this.id, 'Suspend tenant', 'Owner and staff login will be blocked for this tenant.');">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-600">Suspend</button>
+                </form>
+            }
+            @if (Model.Status != TenantStatuses.Cancelled)
+            {
+                <form id="tenant-cancel-@Model.Id" asp-action="Cancel" asp-route-id="@Model.Id" method="post" onsubmit="return openConfirmModal(this.id, 'Cancel tenant', 'This keeps tenant data but blocks future access.');">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">Cancel</button>
+                </form>
+            }
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+        <div class="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
+            <p class="text-sm text-gray-500">Stores</p>
+            <p class="mt-2 text-3xl font-bold text-gray-900">@Model.StoreCount</p>
+        </div>
+        <div class="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
+            <p class="text-sm text-gray-500">Staff</p>
+            <p class="mt-2 text-3xl font-bold text-gray-900">@Model.StaffCount</p>
+        </div>
+        <div class="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
+            <p class="text-sm text-gray-500">Orders</p>
+            <p class="mt-2 text-3xl font-bold text-gray-900">@Model.OrderCount</p>
+        </div>
+        <div class="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
+            <p class="text-sm text-gray-500">Revenue</p>
+            <p class="mt-2 text-3xl font-bold text-gray-900">@Model.RevenueTotal.ToString("$#,##0.##")</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <section class="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
+            <h2 class="font-bold text-gray-900 mb-4">Tenant Information</h2>
+            <dl class="space-y-3 text-sm">
+                <div class="flex justify-between gap-4"><dt class="text-gray-500">Status</dt><dd class="font-semibold text-gray-900">@Model.Status</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-gray-500">Tax code</dt><dd class="font-semibold text-gray-900">@(Model.TaxCode ?? "-")</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-gray-500">Phone</dt><dd class="font-semibold text-gray-900">@(Model.Phone ?? "-")</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-gray-500">Address</dt><dd class="font-semibold text-gray-900 text-right">@(Model.Address ?? "-")</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-gray-500">Created</dt><dd class="font-semibold text-gray-900">@Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd></div>
+            </dl>
+        </section>
+
+        <section class="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
+            <h2 class="font-bold text-gray-900 mb-4">Owner</h2>
+            <dl class="space-y-3 text-sm">
+                <div class="flex justify-between gap-4"><dt class="text-gray-500">Name</dt><dd class="font-semibold text-gray-900">@Model.OwnerName</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-gray-500">Email</dt><dd class="font-semibold text-gray-900">@Model.OwnerEmail</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-gray-500">Status</dt><dd class="font-semibold text-gray-900">@Model.OwnerStatus</dd></div>
+            </dl>
+            @if (!string.IsNullOrWhiteSpace(Model.OwnerUserId))
+            {
+                <a asp-controller="Owners" asp-action="Details" asp-route-id="@Model.OwnerUserId" class="mt-4 inline-flex rounded-xl bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-600 hover:bg-orange-100">View owner</a>
+            }
+        </section>
+    </div>
+</div>
