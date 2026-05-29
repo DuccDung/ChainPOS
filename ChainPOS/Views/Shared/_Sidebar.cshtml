@@ -83,12 +83,13 @@
                 <span>Audit Logs</span>
                 @Html.Raw(Dot("audit"))
             </a>
-            <a href="#" class="@NavClass("settings")">
+            <a asp-area="Admin" asp-controller="Settings" asp-action="Index" class="@NavClass("settings")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317a1.724 1.724 0 013.35 0 1.724 1.724 0 002.573 1.066 1.724 1.724 0 012.369 2.369 1.724 1.724 0 001.066 2.573 1.724 1.724 0 010 3.35 1.724 1.724 0 00-1.066 2.573 1.724 1.724 0 01-2.369 2.369 1.724 1.724 0 00-2.573 1.066 1.724 1.724 0 01-3.35 0 1.724 1.724 0 00-2.573-1.066 1.724 1.724 0 01-2.369-2.369 1.724 1.724 0 00-1.066-2.573 1.724 1.724 0 010-3.35 1.724 1.724 0 001.066-2.573 1.724 1.724 0 012.369-2.369 1.724 1.724 0 002.573-1.066z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 <span>Settings</span>
+                @Html.Raw(Dot("settings"))
             </a>
         }
         else if (appRole == "Owner")

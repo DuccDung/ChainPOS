@@ -79,6 +79,7 @@ secrets.json
 *.sqlite3
 *.mdf
 *.ldf
+ChainPOS/App_Data/settings/*.json
 
 # OS files
 .DS_Store

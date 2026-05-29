@@ -1,0 +1,228 @@
+@model ChainPOS.ViewModels.Admin.Settings.AdminSettingsViewModel
+@{
+    ViewData["Title"] = "Settings";
+    ViewData["ActiveMenu"] = "settings";
+    string UpdatedText() => Model.UpdatedAt.HasValue
+        ? $"{Model.UpdatedAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}"
+        : "Not saved yet";
+}
+
+<div class="flex flex-col gap-5" data-live-page="settings">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-gray-400 mb-0.5">
+                <a asp-area="Admin" asp-controller="Dashboard" asp-action="Index" class="hover:text-orange-500">Dashboard</a>
+                <span>/</span><span class="text-orange-500 font-medium">Settings</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">System Settings</h1>
+            <p class="text-sm text-gray-500 mt-1">Configure platform defaults, security rules, billing behavior and live notifications.</p>
+        </div>
+        <button form="admin-settings-form" type="submit" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-sm font-semibold rounded-xl hover:from-orange-600 hover:to-amber-600 shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+            Save Changes
+        </button>
+    </div>
+
+    <form id="admin-settings-form" asp-action="Index" method="post" class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        @Html.AntiForgeryToken()
+
+        <div class="xl:col-span-1">
+            <div class="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden sticky top-24">
+                <div class="p-4 border-b border-gray-50">
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Configuration</p>
+                    <p class="text-xs text-gray-400 mt-1">Updated @UpdatedText()</p>
+                </div>
+                <nav class="p-2 space-y-1" id="settings-nav">
+                    <button type="button" class="settings-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all bg-orange-500 text-white" data-tab="general">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317a1.724 1.724 0 013.35 0 1.724 1.724 0 002.573 1.066 1.724 1.724 0 012.369 2.369 1.724 1.724 0 001.066 2.573 1.724 1.724 0 010 3.35 1.724 1.724 0 00-1.066 2.573 1.724 1.724 0 01-2.369 2.369 1.724 1.724 0 00-2.573 1.066 1.724 1.724 0 01-3.35 0 1.724 1.724 0 00-2.573-1.066 1.724 1.724 0 01-2.369-2.369 1.724 1.724 0 001.066-2.573 1.724 1.724 0 010-3.35 1.724 1.724 0 001.066-2.573 1.724 1.724 0 012.369-2.369 1.724 1.724 0 002.573-1.066z" /></svg>
+                        General
+                    </button>
+                    <button type="button" class="settings-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all text-gray-600 hover:bg-orange-50 hover:text-orange-600" data-tab="security">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                        Security
+                    </button>
+                    <button type="button" class="settings-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all text-gray-600 hover:bg-orange-50 hover:text-orange-600" data-tab="billing">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5 1h.01M14 15h.01M5 5h14v14H5z" /></svg>
+                        Billing
+                    </button>
+                    <button type="button" class="settings-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all text-gray-600 hover:bg-orange-50 hover:text-orange-600" data-tab="pos">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h.01M11 15h2M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" /></svg>
+                        POS Defaults
+                    </button>
+                    <button type="button" class="settings-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all text-gray-600 hover:bg-orange-50 hover:text-orange-600" data-tab="notifications">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" /></svg>
+                        Notifications
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+        <div class="xl:col-span-3 space-y-5">
+            <div asp-validation-summary="ModelOnly" class="text-sm text-red-600"></div>
+
+            <section id="tab-general" class="tab-panel bg-white rounded-2xl border border-orange-100 shadow-sm p-6">
+                <h3 class="font-bold text-gray-900 mb-5">General Settings</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label asp-for="SystemName" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <input asp-for="SystemName" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <span asp-validation-for="SystemName" class="text-xs text-red-500"></span>
+                    </div>
+                    <div>
+                        <label asp-for="PlatformUrl" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <input asp-for="PlatformUrl" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <span asp-validation-for="PlatformUrl" class="text-xs text-red-500"></span>
+                    </div>
+                    <div>
+                        <label asp-for="SupportEmail" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <input asp-for="SupportEmail" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <span asp-validation-for="SupportEmail" class="text-xs text-red-500"></span>
+                    </div>
+                    <div>
+                        <label asp-for="SupportPhone" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <input asp-for="SupportPhone" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <span asp-validation-for="SupportPhone" class="text-xs text-red-500"></span>
+                    </div>
+                    <div>
+                        <label asp-for="DefaultTimezone" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <select asp-for="DefaultTimezone" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white">
+                            <option value="Asia/Bangkok">Asia/Bangkok</option>
+                            <option value="UTC">UTC</option>
+                            <option value="Asia/Ho_Chi_Minh">Asia/Ho_Chi_Minh</option>
+                            <option value="Asia/Singapore">Asia/Singapore</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label asp-for="DefaultCurrency" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <select asp-for="DefaultCurrency" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white">
+                            <option value="VND">VND</option>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                            <option value="SGD">SGD</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label asp-for="DateFormat" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <select asp-for="DateFormat" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white">
+                            <option value="dd/MM/yyyy">dd/MM/yyyy</option>
+                            <option value="yyyy-MM-dd">yyyy-MM-dd</option>
+                            <option value="MM/dd/yyyy">MM/dd/yyyy</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-5 space-y-3 border-t border-gray-50 pt-5">
+                    <partial name="_SettingsToggle" model='("MaintenanceMode", "Maintenance Mode", "Disable tenant-facing access for maintenance windows.", Model.MaintenanceMode)' />
+                    <partial name="_SettingsToggle" model='("EnableDebugLogging", "Debug Logging", "Enable verbose logs while investigating platform issues.", Model.EnableDebugLogging)' />
+                </div>
+            </section>
+
+            <section id="tab-security" class="tab-panel hidden bg-white rounded-2xl border border-orange-100 shadow-sm p-6">
+                <h3 class="font-bold text-gray-900 mb-5">Security Settings</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label asp-for="MaxLoginAttempts" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <input asp-for="MaxLoginAttempts" type="number" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <span asp-validation-for="MaxLoginAttempts" class="text-xs text-red-500"></span>
+                    </div>
+                    <div>
+                        <label asp-for="LockoutMinutes" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <input asp-for="LockoutMinutes" type="number" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <span asp-validation-for="LockoutMinutes" class="text-xs text-red-500"></span>
+                    </div>
+                    <div>
+                        <label asp-for="SessionTimeoutMinutes" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <input asp-for="SessionTimeoutMinutes" type="number" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <span asp-validation-for="SessionTimeoutMinutes" class="text-xs text-red-500"></span>
+                    </div>
+                </div>
+                <div class="mt-5 space-y-3 border-t border-gray-50 pt-5">
+                    <partial name="_SettingsToggle" model='("RequireStrongPassword", "Password Complexity", "Require strong password policy for newly created accounts.", Model.RequireStrongPassword)' />
+                    <partial name="_SettingsToggle" model='("EnableAdminTwoFactor", "Admin Two-Factor Authentication", "Require 2FA for admin accounts when the auth provider supports it.", Model.EnableAdminTwoFactor)' />
+                </div>
+            </section>
+
+            <section id="tab-billing" class="tab-panel hidden bg-white rounded-2xl border border-orange-100 shadow-sm p-6">
+                <h3 class="font-bold text-gray-900 mb-5">Subscription & Billing Settings</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label asp-for="TrialDays" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <input asp-for="TrialDays" type="number" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <span asp-validation-for="TrialDays" class="text-xs text-red-500"></span>
+                    </div>
+                    <div>
+                        <label asp-for="RenewalReminderDays" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <input asp-for="RenewalReminderDays" type="number" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <span asp-validation-for="RenewalReminderDays" class="text-xs text-red-500"></span>
+                    </div>
+                    <div>
+                        <label asp-for="AllowExpiredTenantGraceDays" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <input asp-for="AllowExpiredTenantGraceDays" type="number" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <span asp-validation-for="AllowExpiredTenantGraceDays" class="text-xs text-red-500"></span>
+                    </div>
+                    <div>
+                        <label asp-for="BillingTaxRate" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <input asp-for="BillingTaxRate" type="number" step="0.01" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <span asp-validation-for="BillingTaxRate" class="text-xs text-red-500"></span>
+                    </div>
+                    <div>
+                        <label asp-for="InvoicePrefix" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <input asp-for="InvoicePrefix" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <span asp-validation-for="InvoicePrefix" class="text-xs text-red-500"></span>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tab-pos" class="tab-panel hidden bg-white rounded-2xl border border-orange-100 shadow-sm p-6">
+                <h3 class="font-bold text-gray-900 mb-5">POS Defaults</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label asp-for="OrderPrefix" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <input asp-for="OrderPrefix" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <span asp-validation-for="OrderPrefix" class="text-xs text-red-500"></span>
+                    </div>
+                    <div>
+                        <label asp-for="PosTaxRate" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <input asp-for="PosTaxRate" type="number" step="0.01" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <span asp-validation-for="PosTaxRate" class="text-xs text-red-500"></span>
+                    </div>
+                    <div>
+                        <label asp-for="AllowCancelAfterDays" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
+                        <input asp-for="AllowCancelAfterDays" type="number" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <span asp-validation-for="AllowCancelAfterDays" class="text-xs text-red-500"></span>
+                    </div>
+                </div>
+                <div class="mt-5 border-t border-gray-50 pt-5">
+                    <partial name="_SettingsToggle" model='("AllowNegativeStock", "Allow Negative Stock", "Let POS checkout continue when inventory is insufficient.", Model.AllowNegativeStock)' />
+                </div>
+            </section>
+
+            <section id="tab-notifications" class="tab-panel hidden bg-white rounded-2xl border border-orange-100 shadow-sm p-6">
+                <h3 class="font-bold text-gray-900 mb-5">Notification Settings</h3>
+                <div class="space-y-3">
+                    <partial name="_SettingsToggle" model='("EnableRealtimeNotifications", "Realtime Notifications", "Show live toasts, notification badge and reload banners.", Model.EnableRealtimeNotifications)' />
+                    <partial name="_SettingsToggle" model='("EnableLowStockAlerts", "Low Stock Alerts", "Notify operators when stock reaches minimum quantity.", Model.EnableLowStockAlerts)' />
+                    <partial name="_SettingsToggle" model='("EnableSubscriptionExpiryAlerts", "Subscription Expiry Alerts", "Notify admins and owners before subscriptions expire.", Model.EnableSubscriptionExpiryAlerts)' />
+                </div>
+            </section>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const tabs = document.querySelectorAll('.settings-tab');
+            const panels = document.querySelectorAll('.tab-panel');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const name = tab.dataset.tab;
+                    panels.forEach(panel => panel.classList.toggle('hidden', panel.id !== `tab-${name}`));
+                    tabs.forEach(item => {
+                        const active = item === tab;
+                        item.className = `settings-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all ${active ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'}`;
+                    });
+                });
+            });
+        })();
+    </script>
+}

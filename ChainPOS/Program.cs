@@ -50,6 +50,7 @@ builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IAuditLogQueryService, AuditLogQueryService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IAdminManagementService, AdminManagementService>();
+builder.Services.AddScoped<IAdminSettingsService, AdminSettingsService>();
 builder.Services.AddScoped<IOwnerStoreService, OwnerStoreService>();
 builder.Services.AddScoped<IOwnerStaffService, OwnerStaffService>();
 builder.Services.AddScoped<IOwnerCategoryService, OwnerCategoryService>();

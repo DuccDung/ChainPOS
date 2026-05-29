@@ -13,6 +13,7 @@ Tài liệu này là backlog triển khai tiếp theo cho dự án `ChainPOS` sa
 - [x] Phase 1: Authentication/login 3 role `ADMIN`, `OWNER`, `STAFF`.
 - [x] Phase 2: Layout/dashboard theo role, sidebar/topbar/alert/confirm modal.
 - [x] Phase 3: Admin quản lý Owner, Tenant, Subscription Plan và System Payment MVP.
+- [x] Admin Settings MVP lưu cấu hình platform/security/billing/POS/notification bằng JSON local.
 - [x] Phase 4: Owner quản lý Store, Staff và gán Staff vào Store.
 - [x] Phase 5: Category, Product, Store Product.
 - [x] Phase 6: Inventory import/export/adjust cho Owner/Staff.
@@ -604,6 +605,16 @@ Mục tiêu: admin quản lý owner, tenant, subscription plan và audit log.
 - [x] Mark as failed.
 - [x] Gắn `PaidAt`.
 - [x] Link invoice nếu có.
+
+### 7.5. Admin settings
+
+- [x] Tạo `Areas/Admin/Controllers/SettingsController`.
+- [x] Tạo service `IAdminSettingsService` đọc/ghi cấu hình.
+- [x] Lưu cấu hình local bằng JSON trong `App_Data/settings`.
+- [x] UI cấu hình General, Security, Billing, POS defaults và Notifications.
+- [x] Validate server-side bằng ViewModel.
+- [x] Ghi audit log `UpdateSystemSettings`.
+- [x] Sidebar Settings trỏ về màn Settings thật.
 
 ## 8. Phase 4: Owner quản lý tenant, store, staff
 
