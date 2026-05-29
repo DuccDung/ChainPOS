@@ -2,6 +2,7 @@ using ChainPOS.Constants;
 using ChainPOS.Models;
 using ChainPOS.Services.Audit;
 using ChainPOS.Services.Common;
+using ChainPOS.Services.Realtime;
 using ChainPOS.Services.Security;
 using ChainPOS.ViewModels.Sales;
 using Microsoft.EntityFrameworkCore;
@@ -24,17 +25,20 @@ public sealed class PosService : IPosService
     private readonly ICurrentUserService _currentUser;
     private readonly IStoreAccessService _storeAccess;
     private readonly IAuditLogService _auditLog;
+    private readonly IRealtimeNotifier _realtimeNotifier;
 
     public PosService(
         StoreFlowDbContext db,
         ICurrentUserService currentUser,
         IStoreAccessService storeAccess,
-        IAuditLogService auditLog)
+        IAuditLogService auditLog,
+        IRealtimeNotifier realtimeNotifier)
     {
         _db = db;
         _currentUser = currentUser;
         _storeAccess = storeAccess;
         _auditLog = auditLog;
+        _realtimeNotifier = realtimeNotifier;
     }
 
     public async Task<PosIndexViewModel> GetRegisterAsync(
@@ -180,13 +184,11 @@ public sealed class PosService : IPosService
                 && x.IsAvailable
                 && !x.Product.IsDeleted
                 && x.Product.IsActive)
-            .Select(x => new
-            {
+            .Select(x => new SaleProductSnapshot(
                 x.ProductId,
                 x.Product.Name,
                 x.Product.Sku,
-                Price = x.SellingPrice ?? x.Product.Price
-            })
+                x.SellingPrice ?? x.Product.Price))
             .ToListAsync(cancellationToken);
         if (saleProducts.Count != validItems.Count)
         {
@@ -307,9 +309,80 @@ public sealed class PosService : IPosService
             storeId: storeId,
             cancellationToken: cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        await NotifyCheckoutRealtimeAsync(
+            tenantId,
+            storeId,
+            userId,
+            order,
+            validItems,
+            productMap,
+            inventoryRows,
+            cancellationToken);
 
         return (true, null, order.Id);
     }
+
+    private async Task NotifyCheckoutRealtimeAsync(
+        Guid tenantId,
+        Guid storeId,
+        string userId,
+        Order order,
+        IReadOnlyList<PosCartItemInputModel> validItems,
+        IReadOnlyDictionary<Guid, SaleProductSnapshot> productMap,
+        IReadOnlyDictionary<Guid, Models.Inventory> inventoryRows,
+        CancellationToken cancellationToken)
+    {
+        var store = await _db.Stores
+            .AsNoTracking()
+            .Where(x => x.TenantId == tenantId && x.Id == storeId)
+            .Select(x => new { x.Name, x.Code })
+            .FirstAsync(cancellationToken);
+        var staffName = await _db.AspNetUsers
+            .AsNoTracking()
+            .Where(x => x.Id == userId)
+            .Select(x => x.FullName ?? x.UserName ?? x.Email)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        await _realtimeNotifier.OrderCreatedAsync(
+            new OrderCreatedEvent(
+                tenantId,
+                storeId,
+                order.Id,
+                order.OrderCode,
+                store.Name,
+                store.Code,
+                staffName,
+                validItems.Count,
+                order.TotalAmount,
+                order.PaymentStatus,
+                order.OrderStatus,
+                order.CreatedAt),
+            cancellationToken);
+
+        foreach (var item in validItems)
+        {
+            var productId = item.ProductId!.Value;
+            var product = productMap[productId];
+            var inventory = inventoryRows[productId];
+            await _realtimeNotifier.InventoryChangedAsync(
+                new InventoryChangedEvent(
+                    tenantId,
+                    storeId,
+                    productId,
+                    store.Name,
+                    store.Code,
+                    product.Name,
+                    product.Sku,
+                    inventory.Quantity,
+                    inventory.MinQuantity,
+                    InventoryTransactionTypes.Sale,
+                    -item.Quantity,
+                    DateTime.UtcNow),
+                cancellationToken);
+        }
+    }
+
+    private sealed record SaleProductSnapshot(Guid ProductId, string Name, string? Sku, decimal Price);
 
     private async Task<string> GenerateOrderCodeAsync(Guid tenantId, CancellationToken cancellationToken)
     {

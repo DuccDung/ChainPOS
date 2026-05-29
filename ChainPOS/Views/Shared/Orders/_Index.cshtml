@@ -14,7 +14,7 @@
             : "badge-pending px-2.5 py-0.5 rounded-full text-xs font-semibold";
 }
 
-<div class="flex flex-col gap-5">
+<div class="flex flex-col gap-5" data-live-page="orders" data-live-store-id="@(Model.StoreId?.ToString() ?? "")">
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <div class="flex items-center gap-2 text-sm text-gray-400 mb-0.5">
@@ -95,14 +95,14 @@
                     {
                         foreach (var order in Model.Orders)
                         {
-                            <tr class="hover:bg-orange-50/30">
+                            <tr class="hover:bg-orange-50/30" data-realtime-order-row data-order-id="@order.Id" data-store-id="@Model.StoreId">
                                 <td class="px-5 py-3.5 font-mono text-sm text-orange-500 font-semibold">@order.OrderCode</td>
                                 <td class="px-5 py-3.5"><p class="font-semibold text-gray-800">@order.StoreName</p><p class="font-mono text-xs text-gray-400">@order.StoreCode</p></td>
                                 <td class="px-5 py-3.5 text-gray-600">@(order.StaffName ?? "-")</td>
                                 <td class="px-5 py-3.5 text-center font-bold text-gray-900">@order.ItemCount</td>
                                 <td class="px-5 py-3.5 text-right font-bold text-gray-900">@order.TotalAmount.ToString("#,##0.##")</td>
-                                <td class="px-5 py-3.5"><span class="@PaymentBadge(order.PaymentStatus)">@order.PaymentStatus</span></td>
-                                <td class="px-5 py-3.5"><span class="@OrderBadge(order.OrderStatus)">@order.OrderStatus</span></td>
+                                <td class="px-5 py-3.5"><span data-realtime-payment-status class="@PaymentBadge(order.PaymentStatus)">@order.PaymentStatus</span></td>
+                                <td class="px-5 py-3.5"><span data-realtime-order-status class="@OrderBadge(order.OrderStatus)">@order.OrderStatus</span></td>
                                 <td class="px-5 py-3.5 text-gray-400 text-xs">@order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                                 <td class="px-5 py-3.5">
                                     <a asp-area="@Model.AreaName" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id" class="px-2.5 py-1 bg-orange-50 text-orange-600 text-xs font-semibold rounded-lg hover:bg-orange-100">View</a>

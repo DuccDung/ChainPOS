@@ -18,7 +18,7 @@ public sealed class SalesAndInventoryValidationTests
         var seed = await TestDb.SeedTenantStoreProductAsync(db);
         var currentUser = OwnerUser(seed.TenantId, seed.OwnerId);
         var storeAccess = new StoreAccessService(db, currentUser);
-        var service = new InventoryService(db, currentUser, storeAccess, new FakeAuditLogService());
+        var service = new InventoryService(db, currentUser, storeAccess, new FakeAuditLogService(), new FakeRealtimeNotifier());
 
         var result = await service.ImportStockAsync(new InventoryMovementViewModel
         {
@@ -40,7 +40,8 @@ public sealed class SalesAndInventoryValidationTests
         var currentUser = OwnerUser(seed.TenantId, seed.OwnerId);
         var storeAccess = new StoreAccessService(db, currentUser);
         var audit = new FakeAuditLogService();
-        var service = new InventoryService(db, currentUser, storeAccess, audit);
+        var realtime = new FakeRealtimeNotifier();
+        var service = new InventoryService(db, currentUser, storeAccess, audit, realtime);
 
         var result = await service.ImportStockAsync(new InventoryMovementViewModel
         {
@@ -60,6 +61,7 @@ public sealed class SalesAndInventoryValidationTests
         Assert.Equal(InventoryTransactionTypes.Import, transaction.Type);
         Assert.Equal(0m, transaction.BeforeQuantity);
         Assert.Equal(5m, transaction.AfterQuantity);
+        Assert.Contains(nameof(FakeRealtimeNotifier.InventoryChangedAsync), realtime.Events);
     }
 
     [Fact]
@@ -71,7 +73,8 @@ public sealed class SalesAndInventoryValidationTests
         var currentUser = OwnerUser(seed.TenantId, seed.OwnerId);
         var storeAccess = new StoreAccessService(db, currentUser);
         var audit = new FakeAuditLogService();
-        var service = new InventoryService(db, currentUser, storeAccess, audit);
+        var realtime = new FakeRealtimeNotifier();
+        var service = new InventoryService(db, currentUser, storeAccess, audit, realtime);
 
         var result = await service.ExportStockAsync(new InventoryMovementViewModel
         {
@@ -88,6 +91,7 @@ public sealed class SalesAndInventoryValidationTests
         Assert.Equal(InventoryTransactionTypes.Export, transaction.Type);
         Assert.Equal(5m, transaction.BeforeQuantity);
         Assert.Equal(3m, transaction.AfterQuantity);
+        Assert.Contains(nameof(FakeRealtimeNotifier.InventoryChangedAsync), realtime.Events);
     }
 
     [Fact]
@@ -99,7 +103,8 @@ public sealed class SalesAndInventoryValidationTests
         var currentUser = OwnerUser(seed.TenantId, seed.OwnerId);
         var storeAccess = new StoreAccessService(db, currentUser);
         var audit = new FakeAuditLogService();
-        var service = new InventoryService(db, currentUser, storeAccess, audit);
+        var realtime = new FakeRealtimeNotifier();
+        var service = new InventoryService(db, currentUser, storeAccess, audit, realtime);
 
         var result = await service.AdjustStockAsync(new InventoryAdjustViewModel
         {
@@ -120,6 +125,7 @@ public sealed class SalesAndInventoryValidationTests
         Assert.Equal(2m, transaction.Quantity);
         Assert.Equal(5m, transaction.BeforeQuantity);
         Assert.Equal(7m, transaction.AfterQuantity);
+        Assert.Contains(nameof(FakeRealtimeNotifier.InventoryChangedAsync), realtime.Events);
     }
 
     [Fact]
@@ -129,7 +135,7 @@ public sealed class SalesAndInventoryValidationTests
         var seed = await TestDb.SeedTenantStoreProductAsync(db);
         var currentUser = OwnerUser(seed.TenantId, seed.OwnerId);
         var storeAccess = new StoreAccessService(db, currentUser);
-        var service = new PosService(db, currentUser, storeAccess, new FakeAuditLogService());
+        var service = new PosService(db, currentUser, storeAccess, new FakeAuditLogService(), new FakeRealtimeNotifier());
 
         var result = await service.CheckoutAsync(new PosCheckoutInputModel
         {
@@ -156,8 +162,9 @@ public sealed class SalesAndInventoryValidationTests
         var currentUser = OwnerUser(seed.TenantId, seed.OwnerId);
         var storeAccess = new StoreAccessService(db, currentUser);
         var audit = new FakeAuditLogService();
-        var shiftService = new ShiftService(db, currentUser, storeAccess, audit);
-        var posService = new PosService(db, currentUser, storeAccess, audit);
+        var realtime = new FakeRealtimeNotifier();
+        var shiftService = new ShiftService(db, currentUser, storeAccess, audit, realtime);
+        var posService = new PosService(db, currentUser, storeAccess, audit, realtime);
 
         var openShift = await shiftService.OpenShiftAsync(new ShiftOpenViewModel
         {
@@ -187,6 +194,8 @@ public sealed class SalesAndInventoryValidationTests
         Assert.Equal(16m, db.Payments.Single().Amount);
         Assert.Contains("CreateOrder", audit.Actions);
         Assert.Equal(InventoryTransactionTypes.Sale, db.InventoryTransactions.Single().Type);
+        Assert.Contains(nameof(FakeRealtimeNotifier.OrderCreatedAsync), realtime.Events);
+        Assert.Contains(nameof(FakeRealtimeNotifier.InventoryChangedAsync), realtime.Events);
     }
 
     [Fact]
@@ -196,7 +205,7 @@ public sealed class SalesAndInventoryValidationTests
         var seed = await TestDb.SeedTenantStoreProductAsync(db);
         var currentUser = OwnerUser(seed.TenantId, seed.OwnerId);
         var storeAccess = new StoreAccessService(db, currentUser);
-        var service = new OrderService(db, currentUser, storeAccess, new FakeAuditLogService());
+        var service = new OrderService(db, currentUser, storeAccess, new FakeAuditLogService(), new FakeRealtimeNotifier());
 
         var result = await service.CancelOrderAsync(Guid.NewGuid());
 
@@ -213,9 +222,10 @@ public sealed class SalesAndInventoryValidationTests
         var currentUser = OwnerUser(seed.TenantId, seed.OwnerId);
         var storeAccess = new StoreAccessService(db, currentUser);
         var audit = new FakeAuditLogService();
-        var shiftService = new ShiftService(db, currentUser, storeAccess, audit);
-        var posService = new PosService(db, currentUser, storeAccess, audit);
-        var orderService = new OrderService(db, currentUser, storeAccess, audit);
+        var realtime = new FakeRealtimeNotifier();
+        var shiftService = new ShiftService(db, currentUser, storeAccess, audit, realtime);
+        var posService = new PosService(db, currentUser, storeAccess, audit, realtime);
+        var orderService = new OrderService(db, currentUser, storeAccess, audit, realtime);
 
         await shiftService.OpenShiftAsync(new ShiftOpenViewModel
         {
@@ -241,6 +251,8 @@ public sealed class SalesAndInventoryValidationTests
         Assert.Equal(PaymentStatuses.Cancelled, db.Payments.Single().Status);
         Assert.Contains("CancelOrder", audit.Actions);
         Assert.Contains(db.InventoryTransactions, x => x.Type == InventoryTransactionTypes.Return);
+        Assert.Contains(nameof(FakeRealtimeNotifier.OrderCancelledAsync), realtime.Events);
+        Assert.Contains(nameof(FakeRealtimeNotifier.InventoryChangedAsync), realtime.Events);
     }
 
     [Fact]
@@ -250,7 +262,7 @@ public sealed class SalesAndInventoryValidationTests
         var seed = await TestDb.SeedTenantStoreProductAsync(db);
         var currentUser = OwnerUser(seed.TenantId, seed.OwnerId);
         var storeAccess = new StoreAccessService(db, currentUser);
-        var service = new ShiftService(db, currentUser, storeAccess, new FakeAuditLogService());
+        var service = new ShiftService(db, currentUser, storeAccess, new FakeAuditLogService(), new FakeRealtimeNotifier());
 
         var result = await service.CloseShiftAsync(Guid.NewGuid(), new ShiftCloseViewModel
         {
@@ -270,8 +282,9 @@ public sealed class SalesAndInventoryValidationTests
         var currentUser = OwnerUser(seed.TenantId, seed.OwnerId);
         var storeAccess = new StoreAccessService(db, currentUser);
         var audit = new FakeAuditLogService();
-        var shiftService = new ShiftService(db, currentUser, storeAccess, audit);
-        var posService = new PosService(db, currentUser, storeAccess, audit);
+        var realtime = new FakeRealtimeNotifier();
+        var shiftService = new ShiftService(db, currentUser, storeAccess, audit, realtime);
+        var posService = new PosService(db, currentUser, storeAccess, audit, realtime);
 
         var openShift = await shiftService.OpenShiftAsync(new ShiftOpenViewModel
         {
@@ -299,6 +312,7 @@ public sealed class SalesAndInventoryValidationTests
         Assert.Equal(30m, shift.ExpectedCash);
         Assert.Equal(5m, shift.DifferenceAmount);
         Assert.Contains("CloseShift", audit.Actions);
+        Assert.Contains(nameof(FakeRealtimeNotifier.ShiftChangedAsync), realtime.Events);
     }
 
     private static FakeCurrentUserService OwnerUser(Guid tenantId, string userId)

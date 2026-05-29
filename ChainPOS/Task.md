@@ -23,6 +23,7 @@ Tài liệu này là backlog triển khai tiếp theo cho dự án `ChainPOS` sa
 - [x] Phase 8.2 Subscription UI đã làm.
 - [x] Admin Subscription Plan/System Payment ở Phase 3.3 và 3.4 đã làm MVP.
 - [x] Có tài liệu nghiệp vụ và hướng dẫn test trực quan tại `BUSINESS_WORKFLOW_TEST_GUIDE.md`.
+- [x] Có realtime SignalR cho inventory, POS order, cancel order, shift, subscription và system payment.
 
 ### 0.2. Tài khoản demo
 
@@ -70,6 +71,12 @@ Dữ liệu demo Subscription/Admin billing đã được bổ sung:
 - Audit:
   - `Services/Audit/IAuditLogService.cs`
   - `Services/Audit/AuditLogService.cs`
+- Realtime:
+  - `Realtime/ChainPosHub.cs`
+  - `Realtime/RealtimeGroups.cs`
+  - `Services/Realtime/IRealtimeNotifier.cs`
+  - `Services/Realtime/SignalRRealtimeNotifier.cs`
+  - `wwwroot/js/realtime.js`
 - Subscription/Admin billing:
   - `Services/Subscriptions/ISubscriptionManagementService.cs`
   - `Services/Subscriptions/SubscriptionManagementService.cs`
@@ -184,6 +191,14 @@ Sau Subscription/Admin billing + test hardening đã chạy:
   - Admin truy cập `/admin/subscriptions/create` trả 200.
   - Owner truy cập `/owner/subscription` trả 200.
 - Query database xác nhận `SystemPayments` demo có `Paid`, `Pending`, `Failed`.
+
+Sau Realtime SignalR đã chạy:
+
+- `dotnet build .\ChainPOS.sln` thành công, 0 warning, 0 error.
+- `dotnet test .\ChainPOS.sln` thành công, 12 passed, 0 failed.
+- HTTP smoke test `/hubs/chainpos/negotiate?negotiateVersion=1` sau login Owner trả 200 và có `connectionToken`.
+- HTTP smoke test `/owner/pos` xác nhận layout load `signalr.min.js`, `realtime.js` và có `data-live-page="pos"`.
+- Test tự động đã assert các service phát realtime event cho import/export/adjust stock, checkout, cancel order và close shift.
 
 Lưu ý: smoke test có thể để lại dữ liệu ca/order đã đóng/cancel trong database local. Đây là dữ liệu test hợp lệ, không tự ý xóa nếu người dùng không yêu cầu.
 
@@ -874,6 +889,21 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 - [x] Owner chỉ xem audit log trong tenant của mình.
 - [x] Filter audit theo user, store, action, thời gian.
 
+### 12.4. Realtime SignalR
+
+- [x] Tạo `ChainPosHub` dùng cookie auth.
+- [x] Join group theo admin platform, tenant owner và store staff.
+- [x] Broadcast realtime khi inventory import/export/adjust.
+- [x] Broadcast realtime khi POS checkout tạo order.
+- [x] Broadcast realtime khi cancel order và hoàn kho.
+- [x] Broadcast realtime khi open/close shift.
+- [x] Broadcast realtime khi tenant subscription/system payment thay đổi.
+- [x] Client nhận live toast, notification badge và notification dropdown.
+- [x] POS/Inventory cập nhật stock live cho item đang hiển thị.
+- [x] Orders/Shifts/Subscription/Payments hiển thị reload banner khi dữ liệu thay đổi.
+- [ ] Tự động prepend order/payment mới vào table mà không cần reload.
+- [ ] Live update dashboard metrics.
+
 ## 13. Security checklist
 
 - [x] Bật HTTPS.
@@ -948,8 +978,9 @@ Thứ tự nên làm tiếp sau Subscription/Admin billing MVP:
 
 1. Bổ sung test cho tạo owner/staff và các luồng admin billing chi tiết.
 2. Export Excel cho report nếu cần.
-3. Bổ sung low stock/recent orders vào Owner dashboard.
-4. Manual smoke test sâu hơn cho tenant expired/suspended và owner không xem tenant khác.
+3. Bổ sung low stock/recent orders vào Owner dashboard và live update dashboard metrics.
+4. Tự động prepend order/payment mới vào table realtime nếu không muốn reload banner.
+5. Manual smoke test sâu hơn cho tenant expired/suspended và owner không xem tenant khác.
 
 ## 16. Definition of Done cho mỗi chức năng
 

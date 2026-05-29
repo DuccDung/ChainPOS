@@ -22,6 +22,8 @@
     </div>
     <partial name="_ConfirmModal" />
     <script src="~/js/dashboard.js" asp-append-version="true"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+    <script src="~/js/realtime.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

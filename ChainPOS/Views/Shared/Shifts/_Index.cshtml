@@ -6,7 +6,7 @@
         : "badge-delivered px-2.5 py-0.5 rounded-full text-xs font-semibold";
 }
 
-<div class="flex flex-col gap-5">
+<div class="flex flex-col gap-5" data-live-page="shifts" data-live-store-id="@(Model.StoreId?.ToString() ?? "")">
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <div class="flex items-center gap-2 text-sm text-gray-400 mb-0.5">
@@ -76,16 +76,16 @@
                     {
                         foreach (var shift in Model.Shifts)
                         {
-                            <tr class="hover:bg-orange-50/30">
+                            <tr class="hover:bg-orange-50/30" data-realtime-shift-row data-shift-id="@shift.Id">
                                 <td class="px-5 py-3.5"><p class="font-semibold text-gray-800">@shift.StoreName</p><p class="font-mono text-xs text-gray-400">@shift.StoreCode</p></td>
                                 <td class="px-5 py-3.5 font-semibold text-gray-800">@shift.OpenedByName</td>
                                 <td class="px-5 py-3.5 text-gray-500">@shift.OpenedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                                <td class="px-5 py-3.5 text-gray-500">@(shift.ClosedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                                <td class="px-5 py-3.5 text-gray-500" data-realtime-shift-closed>@(shift.ClosedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
                                 <td class="px-5 py-3.5 text-right font-semibold text-gray-900">@shift.OpeningCash.ToString("#,##0.##")</td>
-                                <td class="px-5 py-3.5 text-right font-semibold text-gray-900">@(shift.ExpectedCash?.ToString("#,##0.##") ?? "-")</td>
-                                <td class="px-5 py-3.5 text-right font-semibold @(shift.DifferenceAmount < 0 ? "text-red-600" : "text-gray-900")">@(shift.DifferenceAmount?.ToString("#,##0.##") ?? "-")</td>
+                                <td class="px-5 py-3.5 text-right font-semibold text-gray-900" data-realtime-shift-expected>@(shift.ExpectedCash?.ToString("#,##0.##") ?? "-")</td>
+                                <td class="px-5 py-3.5 text-right font-semibold @(shift.DifferenceAmount < 0 ? "text-red-600" : "text-gray-900")" data-realtime-shift-difference>@(shift.DifferenceAmount?.ToString("#,##0.##") ?? "-")</td>
                                 <td class="px-5 py-3.5 text-center"><span class="font-bold text-gray-900">@shift.OrderCount</span><p class="text-xs text-gray-400">@shift.RevenueTotal.ToString("#,##0.##")</p></td>
-                                <td class="px-5 py-3.5"><span class="@BadgeClass(shift.Status)">@shift.Status</span></td>
+                                <td class="px-5 py-3.5"><span data-realtime-shift-status class="@BadgeClass(shift.Status)">@shift.Status</span></td>
                                 <td class="px-5 py-3.5">
                                     @if (shift.CanClose)
                                     {

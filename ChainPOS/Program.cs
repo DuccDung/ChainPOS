@@ -1,6 +1,7 @@
 using ChainPOS.Constants;
 using ChainPOS.Filters;
 using ChainPOS.Models;
+using ChainPOS.Realtime;
 using ChainPOS.Services.Admin;
 using ChainPOS.Services.Audit;
 using ChainPOS.Services.Auth;
@@ -9,6 +10,7 @@ using ChainPOS.Services.Dashboard;
 using ChainPOS.Services.Inventory;
 using ChainPOS.Services.Owner;
 using ChainPOS.Services.Reports;
+using ChainPOS.Services.Realtime;
 using ChainPOS.Services.Sales;
 using ChainPOS.Services.Security;
 using ChainPOS.Services.Seed;
@@ -36,6 +38,7 @@ builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add<RequireTenantFilter>();
 });
+builder.Services.AddSignalR();
 builder.Services.AddDbContext<StoreFlowDbContext>(options =>
     options.UseSqlServer(defaultConnectionString));
 builder.Services.AddHttpContextAccessor();
@@ -54,6 +57,7 @@ builder.Services.AddScoped<IOwnerProductService, OwnerProductService>();
 builder.Services.AddScoped<IOwnerStoreProductService, OwnerStoreProductService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IRealtimeNotifier, SignalRRealtimeNotifier>();
 builder.Services.AddScoped<IShiftService, ShiftService>();
 builder.Services.AddScoped<IPosService, PosService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
@@ -110,6 +114,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+app.MapHub<ChainPosHub>("/hubs/chainpos");
 
 app.MapControllerRoute(
     name: "areas",

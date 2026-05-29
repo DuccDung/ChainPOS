@@ -2,6 +2,7 @@ using ChainPOS.Constants;
 using ChainPOS.Models;
 using ChainPOS.Services.Audit;
 using ChainPOS.Services.Common;
+using ChainPOS.Services.Realtime;
 using ChainPOS.Services.Security;
 using ChainPOS.ViewModels.Inventory;
 using Microsoft.EntityFrameworkCore;
@@ -14,17 +15,20 @@ public sealed class InventoryService : IInventoryService
     private readonly ICurrentUserService _currentUser;
     private readonly IStoreAccessService _storeAccess;
     private readonly IAuditLogService _auditLog;
+    private readonly IRealtimeNotifier _realtimeNotifier;
 
     public InventoryService(
         StoreFlowDbContext db,
         ICurrentUserService currentUser,
         IStoreAccessService storeAccess,
-        IAuditLogService auditLog)
+        IAuditLogService auditLog,
+        IRealtimeNotifier realtimeNotifier)
     {
         _db = db;
         _currentUser = currentUser;
         _storeAccess = storeAccess;
         _auditLog = auditLog;
+        _realtimeNotifier = realtimeNotifier;
     }
 
     public async Task<InventoryIndexViewModel> GetInventoryAsync(
@@ -231,6 +235,15 @@ public sealed class InventoryService : IInventoryService
             storeId: inventory.StoreId,
             cancellationToken: cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        await NotifyInventoryChangedAsync(
+            tenantId,
+            storeId,
+            productId,
+            inventory.Quantity,
+            inventory.MinQuantity,
+            InventoryTransactionTypes.Import,
+            model.Quantity,
+            cancellationToken);
 
         return (true, null);
     }
@@ -288,6 +301,15 @@ public sealed class InventoryService : IInventoryService
             storeId: inventory.StoreId,
             cancellationToken: cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        await NotifyInventoryChangedAsync(
+            tenantId,
+            inventory.StoreId,
+            inventory.ProductId,
+            inventory.Quantity,
+            inventory.MinQuantity,
+            InventoryTransactionTypes.Export,
+            -model.Quantity,
+            cancellationToken);
 
         return (true, null);
     }
@@ -358,6 +380,15 @@ public sealed class InventoryService : IInventoryService
             storeId: inventory.StoreId,
             cancellationToken: cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        await NotifyInventoryChangedAsync(
+            tenantId,
+            inventory.StoreId,
+            inventory.ProductId,
+            inventory.Quantity,
+            inventory.MinQuantity,
+            InventoryTransactionTypes.Adjust,
+            inventory.Quantity - before,
+            cancellationToken);
 
         return (true, null);
     }
@@ -508,6 +539,49 @@ public sealed class InventoryService : IInventoryService
         });
 
         return Task.CompletedTask;
+    }
+
+    private async Task NotifyInventoryChangedAsync(
+        Guid tenantId,
+        Guid storeId,
+        Guid productId,
+        decimal quantity,
+        decimal minQuantity,
+        string changeType,
+        decimal delta,
+        CancellationToken cancellationToken)
+    {
+        var row = await _db.StoreProducts
+            .AsNoTracking()
+            .Where(x => x.TenantId == tenantId && x.StoreId == storeId && x.ProductId == productId)
+            .Select(x => new
+            {
+                StoreName = x.Store.Name,
+                StoreCode = x.Store.Code,
+                ProductName = x.Product.Name,
+                x.Product.Sku
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (row is null)
+        {
+            return;
+        }
+
+        await _realtimeNotifier.InventoryChangedAsync(
+            new InventoryChangedEvent(
+                tenantId,
+                storeId,
+                productId,
+                row.StoreName,
+                row.StoreCode,
+                row.ProductName,
+                row.Sku,
+                quantity,
+                minQuantity,
+                changeType,
+                delta,
+                DateTime.UtcNow),
+            cancellationToken);
     }
 
     private Guid RequireTenantId()

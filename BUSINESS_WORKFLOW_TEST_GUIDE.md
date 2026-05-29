@@ -1,38 +1,38 @@
-# ChainPOS - Tai lieu nghiep vu va huong dan test truc quan
+# ChainPOS - Tài liệu nghiệp vụ và hướng dẫn test trực quan
 
-Cap nhat: 2026-05-29
+Cập nhật: 2026-05-29
 
-Tai lieu nay mo ta he thong ChainPOS theo goc nhin nghiep vu: he thong co nhung chuc nang gi, moi vai tro dung de lam gi, va nen test truc quan nhu the nao de thay duoc du lieu thay doi tren man hinh.
+Tài liệu này mô tả hệ thống ChainPOS theo góc nhìn nghiệp vụ: hệ thống có những chức năng gì, mỗi vai trò dùng để làm gì, và nên test trực quan như thế nào để thấy được dữ liệu thay đổi trên màn hình.
 
-> Luu y ve "realtime": hien tai ChainPOS la ASP.NET Core MVC server-rendered, chua co SignalR/WebSocket de day thay doi realtime sang nhieu man hinh dang mo. Nghia la sau khi dat hang, dong ca, nhap kho... du lieu duoc ghi ngay vao database va man hinh hien tai redirect/cap nhat sau POST. Cac man hinh khac muon thay doi moi thi reload lai trang hoac vao lai menu tuong ung. Khi tai lieu nay noi "test realtime/truc quan", hay hieu la test cap nhat ngay sau thao tac va test bang 2 tab/2 tai khoan kem thao tac refresh de xac nhan du lieu da dong bo.
+> Lưu ý về "realtime": ChainPOS đã có SignalR cho các sự kiện nghiệp vụ chính. Khi nhập/xuất/điều chỉnh kho, POS checkout, cancel order, open/close shift, subscription/payment thay đổi, các client đang online sẽ nhận toast/thông báo live. POS và Inventory có thể cập nhật stock đang hiện trên màn hình ngay lập tức. Một số danh sách server-rendered như Orders/Payments sẽ hiện banner live và nút Reload để tải lại danh sách theo filter hiện tại.
 
-## 1. Tong quan he thong
+## 1. Tổng quan hệ thống
 
-ChainPOS la he thong quan ly chuoi cua hang va ban hang POS theo mo hinh SaaS.
+ChainPOS là hệ thống quản lý chuỗi cửa hàng và bán hàng POS theo mô hình SaaS.
 
-Mot platform co nhieu tenant. Moi tenant dai dien cho mot chuoi cua hang cua mot owner. Trong tenant co cac store, staff, danh muc, san pham, ton kho, ca ban hang, don hang POS, bao cao, goi subscription va audit log.
+Một platform có nhiều tenant. Mỗi tenant đại diện cho một chuỗi cửa hàng của một owner. Trong tenant có các store, staff, danh mục, sản phẩm, tồn kho, ca bán hàng, đơn hàng POS, báo cáo, gói subscription và audit log.
 
-He thong co 3 vai tro chinh:
+Hệ thống có 3 vai trò chính:
 
-- `ADMIN`: quan ly toan bo platform SaaS.
-- `OWNER`: quan ly du lieu trong tenant cua minh.
-- `STAFF`: thao tac ban hang/kho trong nhung store duoc owner gan quyen.
+- `ADMIN`: quản lý toàn bộ platform SaaS.
+- `OWNER`: quản lý dữ liệu trong tenant của mình.
+- `STAFF`: thao tác bán hàng/kho trong những store được owner gán quyền.
 
-Dia chi chay local mac dinh:
+Địa chỉ chạy local mặc định:
 
 ```text
 http://localhost:5292
 ```
 
-Tai khoan demo:
+Tài khoản demo:
 
-| Vai tro | Email | Mat khau |
+| Vai trò | Email | Mật khẩu |
 | --- | --- | --- |
 | Admin | `admin@chainpos.local` | `Admin@123` |
 | Owner demo | `owner@demo.local` | `Owner@123` |
 | Staff demo | `staff01@demo.local` | `Staff@123` |
 
-Lenh chay:
+Lệnh chạy:
 
 ```powershell
 cd D:\laptrinhweb\code_outsrc\Dam_Van_Bao\ChainPOS\ChainPOS
@@ -40,118 +40,118 @@ dotnet build .\ChainPOS.sln
 dotnet run --project .\ChainPOS\ChainPOS.csproj --launch-profile http
 ```
 
-Lenh test tu dong:
+Lệnh test tự động:
 
 ```powershell
 dotnet test .\ChainPOS.sln
 ```
 
-## 2. Cac khai niem nghiep vu chinh
+## 2. Các khái niệm nghiệp vụ chính
 
-### 2.1. Platform, tenant va owner
+### 2.1. Platform, tenant và owner
 
-`ADMIN` la nguoi van hanh platform. Admin tao owner, tao tenant, quan ly trang thai tenant va quan ly goi subscription.
+`ADMIN` là người vận hành platform. Admin tạo owner, tạo tenant, quản lý trạng thái tenant và quản lý gói subscription.
 
-`Tenant` la mot don vi kinh doanh rieng, vi du mot chuoi cua hang. Toan bo store, staff, product, inventory, order cua tenant nay phai tach biet voi tenant khac.
+`Tenant` là một đơn vị kinh doanh riêng, ví dụ một chuỗi cửa hàng. Toàn bộ store, staff, product, inventory, order của tenant này phải tách biệt với tenant khác.
 
-`OWNER` la chu tai khoan cua tenant. Owner chi xem va quan ly du lieu cua tenant minh.
+`OWNER` là chủ tài khoản của tenant. Owner chỉ xem và quản lý dữ liệu của tenant mình.
 
-Test can nhin thay:
+Test cần nhìn thấy:
 
-- Admin xem duoc danh sach owner/tenant cua toan platform.
-- Owner khong vao duoc khu vuc Admin.
-- Owner chi thay store, staff, product, inventory, order cua tenant minh.
+- Admin xem được danh sách owner/tenant của toàn platform.
+- Owner không vào được khu vực Admin.
+- Owner chỉ thấy store, staff, product, inventory, order của tenant mình.
 
-### 2.2. Store va store access
+### 2.2. Store và store access
 
-Store la cua hang/chi nhanh trong tenant.
+Store là cửa hàng/chi nhánh trong tenant.
 
-Owner co quyen thao tac tat ca store active trong tenant.
+Owner có quyền thao tác tất cả store active trong tenant.
 
-Staff chi thao tac store ma owner gan trong bang `UserStores` va ban ghi do phai `IsActive = true`.
+Staff chỉ thao tác store mà owner gán trong bảng `UserStores` và bản ghi đó phải `IsActive = true`.
 
-Test can nhin thay:
+Test cần nhìn thấy:
 
-- Owner tao store moi.
-- Owner gan staff vao store.
-- Staff dang nhap chi thay store duoc gan.
-- Staff khong thao tac duoc store chua duoc gan hoac da bi tat quyen.
+- Owner tạo store mới.
+- Owner gán staff vào store.
+- Staff đăng nhập chỉ thấy store được gán.
+- Staff không thao tác được store chưa được gán hoặc đã bị tắt quyền.
 
 ### 2.3. Catalog: category, product, store product
 
-`Category` la danh muc san pham.
+`Category` là danh mục sản phẩm.
 
-`Product` la san pham chung trong tenant. Product co SKU, barcode, gia goc, gia von, anh, trang thai active/inactive.
+`Product` là sản phẩm chung trong tenant. Product có SKU, barcode, giá gốc, giá vốn, ảnh, trạng thái active/inactive.
 
-`StoreProduct` la viec bat san pham ban tai tung store. Cung mot product co the duoc ban o store A nhung khong ban o store B. StoreProduct co `SellingPrice` rieng. Neu `SellingPrice` rong, POS dung `Products.Price`.
+`StoreProduct` là việc bật sản phẩm bán tại từng store. Cùng một product có thể được bán ở store A nhưng không bán ở store B. StoreProduct có `SellingPrice` riêng. Nếu `SellingPrice` rỗng, POS dùng `Products.Price`.
 
-Test can nhin thay:
+Test cần nhìn thấy:
 
-- Product inactive hoac deleted khong hien o POS.
-- StoreProduct `IsAvailable = false` khong hien o POS.
-- Khi set SellingPrice rieng, POS hien gia rieng do.
-- Khi xoa SellingPrice, POS fallback ve Product Price.
+- Product inactive hoặc deleted không hiện ở POS.
+- StoreProduct `IsAvailable = false` không hiện ở POS.
+- Khi set SellingPrice riêng, POS hiện giá riêng đó.
+- Khi xóa SellingPrice, POS fallback về Product Price.
 
-### 2.4. Inventory va inventory transaction
+### 2.4. Inventory và inventory transaction
 
-Inventory luu ton kho theo tenant, store, product.
+Inventory lưu tồn kho theo tenant, store, product.
 
-Moi bien dong kho phai ghi `InventoryTransactions`:
+Mỗi biến động kho phải ghi `InventoryTransactions`:
 
-- `Import`: nhap kho.
-- `Export`: xuat kho thu cong.
-- `Adjust`: kiem kho/dieu chinh ton.
-- `Sale`: POS ban hang tru kho.
-- `Return`: huy don hoan kho.
+- `Import`: nhập kho.
+- `Export`: xuất kho thủ công.
+- `Adjust`: kiểm kho/điều chỉnh tồn.
+- `Sale`: POS bán hàng trừ kho.
+- `Return`: hủy đơn hoàn kho.
 
-Test can nhin thay:
+Test cần nhìn thấy:
 
-- Nhap kho tang so luong.
-- Xuat kho giam so luong.
-- Dieu chinh kho set lai so luong thuc te.
-- POS checkout tru kho.
-- Cancel order hoan kho.
-- Cac thao tac quan trong co audit log.
+- Nhập kho tăng số lượng.
+- Xuất kho giảm số lượng.
+- Điều chỉnh kho set lại số lượng thực tế.
+- POS checkout trừ kho.
+- Cancel order hoàn kho.
+- Các thao tác quan trọng có audit log.
 
-### 2.5. Shift va POS
+### 2.5. Shift và POS
 
-Shift la ca ban hang. Owner/Staff phai mo ca truoc khi checkout POS.
+Shift là ca bán hàng. Owner/Staff phải mở ca trước khi checkout POS.
 
-Luon co rule:
+Luôn có rule:
 
-- Mot user khong duoc mo nhieu ca `Open` cung luc.
-- Checkout phai co ca `Open` tai store dang ban.
-- Dong ca tinh:
-  - `ExpectedCash = OpeningCash + tong payment cash trong ca`
+- Một user không được mở nhiều ca `Open` cùng lúc.
+- Checkout phải có ca `Open` tại store đang bán.
+- Đóng ca tính:
+  - `ExpectedCash = OpeningCash + tổng payment cash trong ca`
   - `DifferenceAmount = ClosingCash - ExpectedCash`
 
-POS la man hinh ban hang:
+POS là màn hình bán hàng:
 
-- Chon store.
-- Search product theo ten, SKU, barcode.
-- Them product vao gio.
-- Tang/giam so luong.
-- Chon payment method.
-- Neu cash thi nhap tien khach dua.
-- Checkout tao order, order items, payment, tru kho va redirect sang receipt.
+- Chọn store.
+- Search product theo tên, SKU, barcode.
+- Thêm product vào giỏ.
+- Tăng/giảm số lượng.
+- Chọn payment method.
+- Nếu cash thì nhập tiền khách đưa.
+- Checkout tạo order, order items, payment, trừ kho và redirect sang receipt.
 
-### 2.6. Orders, receipt va cancel
+### 2.6. Orders, receipt và cancel
 
-Order la don POS da checkout.
+Order là đơn POS đã checkout.
 
-Receipt la man chi tiet/in hoa don.
+Receipt là màn chi tiết/in hóa đơn.
 
 Cancel order:
 
-- Doi `OrderStatus = Cancelled`.
-- Doi `PaymentStatus = Cancelled`.
-- Cap nhat payment ve `Cancelled`.
-- Hoan kho bang transaction `Return`.
+- Đổi `OrderStatus = Cancelled`.
+- Đổi `PaymentStatus = Cancelled`.
+- Cập nhật payment về `Cancelled`.
+- Hoàn kho bằng transaction `Return`.
 - Ghi audit `CancelOrder`.
 
-### 2.7. Subscription va billing SaaS
+### 2.7. Subscription và billing SaaS
 
-Subscription Plan quy dinh gioi han tenant:
+Subscription Plan quy định giới hạn tenant:
 
 - `MaxStores`
 - `MaxStaff`
@@ -159,45 +159,45 @@ Subscription Plan quy dinh gioi han tenant:
 - `Price`
 - `BillingCycle`
 
-TenantSubscription la lich su goi cua tenant.
+TenantSubscription là lịch sử gói của tenant.
 
-SystemPayment la thanh toan SaaS cua tenant cho platform, khac voi Payment POS.
+SystemPayment là thanh toán SaaS của tenant cho platform, khác với Payment POS.
 
-Test can nhin thay:
+Test cần nhìn thấy:
 
-- Admin tao/sua/kich hoat/tat plan.
-- Admin khong xoa vat ly plan da co tenant dung; nen deactivate.
-- Admin gan plan cho tenant.
-- Owner xem subscription hien tai.
-- Owner xem lich su system payment.
-- Admin mark system payment `Paid` hoac `Failed`.
+- Admin tạo/sửa/kích hoạt/tắt plan.
+- Admin không xóa vật lý plan đã có tenant dùng; nên deactivate.
+- Admin gán plan cho tenant.
+- Owner xem subscription hiện tại.
+- Owner xem lịch sử system payment.
+- Admin mark system payment `Paid` hoặc `Failed`.
 
-### 2.8. Reports va audit log
+### 2.8. Reports và audit log
 
-Reports hien co:
+Reports hiện có:
 
 - Daily sales report.
 - Staff sales report.
 - Inventory status report.
 - System revenue report cho Admin.
 
-Audit log ghi cac thao tac quan trong:
+Audit log ghi các thao tác quan trọng:
 
 - Login/logout.
-- Tao/sua/khoa user.
-- Tao/sua store, staff, category, product.
-- Nhap/xuat/dieu chinh kho.
-- Mo/dong ca.
-- Tao/huy order.
-- Doi subscription.
+- Tạo/sửa/khóa user.
+- Tạo/sửa store, staff, category, product.
+- Nhập/xuất/điều chỉnh kho.
+- Mở/đóng ca.
+- Tạo/hủy order.
+- Đổi subscription.
 
-Admin xem toan bo audit log. Owner chi xem audit log trong tenant minh.
+Admin xem toàn bộ audit log. Owner chỉ xem audit log trong tenant mình.
 
-## 3. Ban do menu va URL chinh
+## 3. Bản đồ menu và URL chính
 
 ### 3.1. Authentication
 
-| Chuc nang | URL |
+| Chức năng | URL |
 | --- | --- |
 | Login | `/login` |
 | Logout | POST `/logout` |
@@ -205,20 +205,20 @@ Admin xem toan bo audit log. Owner chi xem audit log trong tenant minh.
 
 ### 3.2. Admin
 
-| Chuc nang | URL |
+| Chức năng | URL |
 | --- | --- |
 | Dashboard | `/admin/dashboard` |
 | Owners | `/admin/owners` |
 | Tenants | `/admin/tenants` |
 | Subscription plans | `/admin/subscriptionplans` |
-| Gan subscription cho tenant | `/admin/subscriptions/create` |
+| Gán subscription cho tenant | `/admin/subscriptions/create` |
 | System payments | `/admin/systempayments` |
 | Reports | `/admin/reports` |
 | Audit logs | `/admin/auditlogs` |
 
 ### 3.3. Owner
 
-| Chuc nang | URL |
+| Chức năng | URL |
 | --- | --- |
 | Dashboard | `/owner/dashboard` |
 | Stores | `/owner/stores` |
@@ -236,7 +236,7 @@ Admin xem toan bo audit log. Owner chi xem audit log trong tenant minh.
 
 ### 3.4. Staff
 
-| Chuc nang | URL |
+| Chức năng | URL |
 | --- | --- |
 | Dashboard | `/staff/dashboard` |
 | Inventory | `/staff/inventory` |
@@ -244,369 +244,369 @@ Admin xem toan bo audit log. Owner chi xem audit log trong tenant minh.
 | POS | `/staff/pos` |
 | Orders | `/staff/orders` |
 
-## 4. Luong nghiep vu theo vai tro
+## 4. Luồng nghiệp vụ theo vai trò
 
-### 4.1. Admin van hanh platform
+### 4.1. Admin vận hành platform
 
-Muc tieu: tao tenant moi, quan ly trang thai tenant, goi subscription va thanh toan SaaS.
+Mục tiêu: tạo tenant mới, quản lý trạng thái tenant, gói subscription và thanh toán SaaS.
 
-Luong co ban:
+Luồng cơ bản:
 
-1. Dang nhap bang `admin@chainpos.local`.
-2. Vao `/admin/owners`.
-3. Tao owner moi.
-4. He thong tao owner user, gan role `OWNER`, tao tenant va gan owner vao tenant.
-5. Vao `/admin/tenants` de xem tenant moi.
-6. Vao detail tenant de suspend/activate/cancel neu can.
-7. Vao `/admin/subscriptionplans` de tao hoac sua plan.
-8. Vao `/admin/subscriptions/create` de gan plan cho tenant.
-9. Vao `/admin/systempayments` de theo doi thanh toan SaaS.
-10. Vao `/admin/auditlogs` de kiem tra thao tac da ghi audit.
+1. Đăng nhập bằng `admin@chainpos.local`.
+2. Vào `/admin/owners`.
+3. Tạo owner mới.
+4. Hệ thống tạo owner user, gán role `OWNER`, tạo tenant và gán owner vào tenant.
+5. Vào `/admin/tenants` để xem tenant mới.
+6. Vào detail tenant để suspend/activate/cancel nếu cần.
+7. Vào `/admin/subscriptionplans` để tạo hoặc sửa plan.
+8. Vào `/admin/subscriptions/create` để gán plan cho tenant.
+9. Vào `/admin/systempayments` để theo dõi thanh toán SaaS.
+10. Vào `/admin/auditlogs` để kiểm tra thao tác đã ghi audit.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Owner moi login duoc neu dung password.
-- Tenant moi co owner.
-- Subscription moi xuat hien o Owner subscription.
-- Payment SaaS co the mark paid/failed.
-- Audit log co action lien quan.
+- Owner mới login được nếu dùng đúng password.
+- Tenant mới có owner.
+- Subscription mới xuất hiện ở Owner subscription.
+- Payment SaaS có thể mark paid/failed.
+- Audit log có action liên quan.
 
-### 4.2. Owner chuan bi cua hang de ban POS
+### 4.2. Owner chuẩn bị cửa hàng để bán POS
 
-Muc tieu: tao store, tao staff, tao product, gan product vao store, nhap kho.
+Mục tiêu: tạo store, tạo staff, tạo product, gán product vào store, nhập kho.
 
-Luong co ban:
+Luồng cơ bản:
 
-1. Dang nhap bang `owner@demo.local`.
-2. Vao `/owner/stores`, tao store moi hoac dung store demo `TZ-HCM-01`.
-3. Vao `/owner/staff`, tao staff hoac dung `staff01@demo.local`.
-4. Gan staff vao store.
-5. Vao `/owner/categories`, tao category neu can.
-6. Vao `/owner/products`, tao product moi.
-7. Vao `/owner/storeproducts`, gan product vao store, bat `IsAvailable`, set `SellingPrice` neu muon.
-8. Vao `/owner/inventory/import`, nhap kho cho product o store.
-9. Vao `/owner/pos`, chon store, search product de kiem tra san pham da hien.
+1. Đăng nhập bằng `owner@demo.local`.
+2. Vào `/owner/stores`, tạo store mới hoặc dùng store demo `TZ-HCM-01`.
+3. Vào `/owner/staff`, tạo staff hoặc dùng `staff01@demo.local`.
+4. Gán staff vào store.
+5. Vào `/owner/categories`, tạo category nếu cần.
+6. Vào `/owner/products`, tạo product mới.
+7. Vào `/owner/storeproducts`, gán product vào store, bật `IsAvailable`, set `SellingPrice` nếu muốn.
+8. Vào `/owner/inventory/import`, nhập kho cho product ở store.
+9. Vào `/owner/pos`, chọn store, search product để kiểm tra sản phẩm đã hiện.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Store hien trong danh sach.
-- Staff thuoc tenant hien trong danh sach.
-- Staff login va chi thay store duoc gan.
-- Product hien trong POS neu active, available va co store product.
-- Ton kho hien dung sau khi import.
+- Store hiện trong danh sách.
+- Staff thuộc tenant hiện trong danh sách.
+- Staff login và chỉ thấy store được gán.
+- Product hiện trong POS nếu active, available và có store product.
+- Tồn kho hiện đúng sau khi import.
 
-### 4.3. Staff ban hang tai quay POS
+### 4.3. Staff bán hàng tại quầy POS
 
-Muc tieu: mo ca, checkout, in receipt, dong ca.
+Mục tiêu: mở ca, checkout, in receipt, đóng ca.
 
-Luong co ban:
+Luồng cơ bản:
 
-1. Dang nhap bang `staff01@demo.local`.
-2. Vao `/staff/shifts`.
-3. Mo ca cho store duoc gan, nhap `OpeningCash`.
-4. Vao `/staff/pos`.
-5. Chon store cua ca dang mo.
+1. Đăng nhập bằng `staff01@demo.local`.
+2. Vào `/staff/shifts`.
+3. Mở ca cho store được gán, nhập `OpeningCash`.
+4. Vào `/staff/pos`.
+5. Chọn store của ca đang mở.
 6. Search product.
-7. Them product vao cart.
-8. Tang/giam so luong.
-9. Chon payment method.
-10. Neu cash, nhap `CustomerPaidAmount` lon hon hoac bang total.
+7. Thêm product vào cart.
+8. Tăng/giảm số lượng.
+9. Chọn payment method.
+10. Nếu cash, nhập `CustomerPaidAmount` lớn hơn hoặc bằng total.
 11. Checkout.
-12. He thong redirect sang receipt/order detail.
-13. Vao `/staff/orders` de thay order moi.
-14. Vao `/staff/shifts`, dong ca, nhap `ClosingCash`.
+12. Hệ thống redirect sang receipt/order detail.
+13. Vào `/staff/orders` để thấy order mới.
+14. Vào `/staff/shifts`, đóng ca, nhập `ClosingCash`.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Neu chua mo ca, checkout bi chan.
-- Checkout thanh cong tao order, order item, payment.
-- Inventory giam theo so luong da ban.
-- Receipt hien dung san pham, so luong, gia, total.
-- Dong ca tinh dung cash expected va difference.
+- Nếu chưa mở ca, checkout bị chặn.
+- Checkout thành công tạo order, order item, payment.
+- Inventory giảm theo số lượng đã bán.
+- Receipt hiện đúng sản phẩm, số lượng, giá, total.
+- Đóng ca tính đúng cash expected và difference.
 
-## 5. Huong dan test truc quan chi tiet
+## 5. Hướng dẫn test trực quan chi tiết
 
-### 5.1. Test login va phan quyen
+### 5.1. Test login và phân quyền
 
-Muc tieu: xac nhan 3 vai tro vao dung khu vuc, sai role bi chan.
+Mục tiêu: xác nhận 3 vai trò vào đúng khu vực, sai role bị chặn.
 
-Buoc test:
+Bước test:
 
-1. Mo `http://localhost:5292/login`.
-2. Dang nhap Admin.
-3. Xac nhan redirect ve `/admin/dashboard`.
-4. Thu mo `/owner/products`.
-5. Ket qua mong doi: Admin khong dung khu vuc Owner/Staff nghiep vu, neu bi chan thi dung.
+1. Mở `http://localhost:5292/login`.
+2. Đăng nhập Admin.
+3. Xác nhận redirect về `/admin/dashboard`.
+4. Thử mở `/owner/products`.
+5. Kết quả mong đợi: Admin không dùng khu vực Owner/Staff nghiệp vụ, nếu bị chặn thì đúng.
 6. Logout.
-7. Dang nhap Owner.
-8. Xac nhan redirect ve `/owner/dashboard`.
-9. Thu mo `/admin/owners`.
-10. Ket qua mong doi: access denied.
+7. Đăng nhập Owner.
+8. Xác nhận redirect về `/owner/dashboard`.
+9. Thử mở `/admin/owners`.
+10. Kết quả mong đợi: access denied.
 11. Logout.
-12. Dang nhap Staff.
-13. Xac nhan redirect ve `/staff/dashboard`.
-14. Thu mo `/owner/products` va `/admin/owners`.
-15. Ket qua mong doi: access denied.
+12. Đăng nhập Staff.
+13. Xác nhận redirect về `/staff/dashboard`.
+14. Thử mở `/owner/products` và `/admin/owners`.
+15. Kết quả mong đợi: access denied.
 
-Can nhin tren UI:
+Cần nhìn trên UI:
 
-- Sidebar thay doi theo role.
-- Staff khong thay menu Admin/Owner.
-- Owner khong thay menu Admin.
+- Sidebar thay đổi theo role.
+- Staff không thấy menu Admin/Owner.
+- Owner không thấy menu Admin.
 
-### 5.2. Test Admin tao owner va tenant
+### 5.2. Test Admin tạo owner và tenant
 
-Muc tieu: admin tao owner moi, he thong tao tenant rieng.
+Mục tiêu: admin tạo owner mới, hệ thống tạo tenant riêng.
 
-Buoc test:
+Bước test:
 
-1. Dang nhap Admin.
-2. Vao `/admin/owners`.
-3. Bam Create/New Owner.
-4. Nhap thong tin owner:
+1. Đăng nhập Admin.
+2. Vào `/admin/owners`.
+3. Bấm Create/New Owner.
+4. Nhập thông tin owner:
    - Full name: `Owner Test Manual`
-   - Email: email chua ton tai, vi du `owner.manual.001@demo.local`
-   - Password: dung format hop le theo form.
-   - Tenant name/code neu form yeu cau.
+   - Email: email chưa tồn tại, ví dụ `owner.manual.001@demo.local`
+   - Password: dùng format hợp lệ theo form.
+   - Tenant name/code nếu form yêu cầu.
 5. Submit.
-6. Quay lai danh sach owner.
-7. Search email vua tao.
-8. Vao detail owner/tenant.
+6. Quay lại danh sách owner.
+7. Search email vừa tạo.
+8. Vào detail owner/tenant.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Owner moi xuat hien.
-- Owner co role `OWNER`.
-- Tenant moi duoc tao va gan owner.
-- Audit log co `CreateUser`/`CreateTenant`.
+- Owner mới xuất hiện.
+- Owner có role `OWNER`.
+- Tenant mới được tạo và gán owner.
+- Audit log có `CreateUser`/`CreateTenant`.
 
-Test truc quan tiep:
+Test trực quan tiếp:
 
 1. Logout Admin.
-2. Login bang owner moi.
-3. Xac nhan vao `/owner/dashboard`.
-4. Owner moi chua thay du lieu cua tenant demo cu.
+2. Login bằng owner mới.
+3. Xác nhận vào `/owner/dashboard`.
+4. Owner mới chưa thấy dữ liệu của tenant demo cũ.
 
 ### 5.3. Test Admin tenant status
 
-Muc tieu: tenant suspended/cancelled bi chan khi owner/staff thao tac nghiep vu.
+Mục tiêu: tenant suspended/cancelled bị chặn khi owner/staff thao tác nghiệp vụ.
 
-Buoc test:
+Bước test:
 
-1. Dang nhap Admin.
-2. Vao `/admin/tenants`.
-3. Chon tenant cua owner test.
-4. Bam Suspend.
+1. Đăng nhập Admin.
+2. Vào `/admin/tenants`.
+3. Chọn tenant của owner test.
+4. Bấm Suspend.
 5. Logout Admin.
-6. Login owner cua tenant do.
-7. Thu vao `/owner/stores`, `/owner/products`, `/owner/pos`.
+6. Login owner của tenant đó.
+7. Thử vào `/owner/stores`, `/owner/products`, `/owner/pos`.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Tenant suspended/cancelled khong duoc thao tac module nghiep vu.
-- Neu dang nhap bi chan tu dau thi cung hop le theo rule hien co.
-- Admin activate lai tenant thi owner thao tac lai duoc.
+- Tenant suspended/cancelled không được thao tác module nghiệp vụ.
+- Nếu đăng nhập bị chặn từ đầu thì cũng hợp lệ theo rule hiện có.
+- Admin activate lại tenant thì owner thao tác lại được.
 
-### 5.4. Test owner tao store
+### 5.4. Test owner tạo store
 
-Muc tieu: owner quan ly store trong tenant.
+Mục tiêu: owner quản lý store trong tenant.
 
-Buoc test:
+Bước test:
 
-1. Dang nhap Owner.
-2. Vao `/owner/stores`.
-3. Bam Create.
-4. Nhap:
+1. Đăng nhập Owner.
+2. Vào `/owner/stores`.
+3. Bấm Create.
+4. Nhập:
    - Name: `Manual Test Store`
    - Code: `MTS-001`
-   - Address/Phone neu co.
+   - Address/Phone nếu có.
 5. Submit.
 6. Search `MTS-001`.
-7. Edit store, doi ten thanh `Manual Test Store Updated`.
-8. Toggle status inactive/active neu co nut.
+7. Edit store, đổi tên thành `Manual Test Store Updated`.
+8. Toggle status inactive/active nếu có nút.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Store moi hien trong list.
-- Code trung trong tenant bi chan.
-- Store inactive/closed khong dung duoc cho POS/kho.
-- Audit log co create/update/change status.
+- Store mới hiện trong list.
+- Code trùng trong tenant bị chặn.
+- Store inactive/closed không dùng được cho POS/kho.
+- Audit log có create/update/change status.
 
-### 5.5. Test owner tao staff va gan store
+### 5.5. Test owner tạo staff và gán store
 
-Muc tieu: staff chi thao tac store duoc gan.
+Mục tiêu: staff chỉ thao tác store được gán.
 
-Buoc test:
+Bước test:
 
-1. Dang nhap Owner.
-2. Vao `/owner/staff`.
-3. Bam Create.
-4. Tao staff moi:
+1. Đăng nhập Owner.
+2. Vào `/owner/staff`.
+3. Bấm Create.
+4. Tạo staff mới:
    - Full name: `Staff Manual Test`
    - Email: `staff.manual.001@demo.local`
-   - Password: password hop le.
-5. Sau khi tao, vao man gan store.
-6. Gan staff vao store `Manual Test Store` hoac `TZ-HCM-01`.
+   - Password: password hợp lệ.
+5. Sau khi tạo, vào màn gán store.
+6. Gán staff vào store `Manual Test Store` hoặc `TZ-HCM-01`.
 7. Logout Owner.
-8. Login staff moi.
-9. Vao `/staff/dashboard`, `/staff/inventory`, `/staff/pos`.
+8. Login staff mới.
+9. Vào `/staff/dashboard`, `/staff/inventory`, `/staff/pos`.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Staff moi login duoc.
-- Staff chi thay store duoc gan.
-- Neu owner tat `UserStores.IsActive`, staff khong thao tac store do nua.
-- Audit log co `CreateStaff`, `AssignStaffStore`, `EnableStaffStore`/`DisableStaffStore`.
+- Staff mới login được.
+- Staff chỉ thấy store được gán.
+- Nếu owner tắt `UserStores.IsActive`, staff không thao tác store đó nữa.
+- Audit log có `CreateStaff`, `AssignStaffStore`, `EnableStaffStore`/`DisableStaffStore`.
 
 ### 5.6. Test category/product/store product
 
-Muc tieu: san pham duoc tao, gan vao store va hien tren POS.
+Mục tiêu: sản phẩm được tạo, gán vào store và hiện trên POS.
 
-Buoc test:
+Bước test:
 
-1. Dang nhap Owner.
-2. Vao `/owner/categories`.
-3. Tao category `Manual Electronics`.
-4. Vao `/owner/products`.
-5. Tao product:
+1. Đăng nhập Owner.
+2. Vào `/owner/categories`.
+3. Tạo category `Manual Electronics`.
+4. Vào `/owner/products`.
+5. Tạo product:
    - Name: `Manual POS Product`
    - SKU: `MANUAL-POS-001`
    - Barcode: `899000000001`
    - Price: `100000`
    - CostPrice: `70000`
    - Category: `Manual Electronics`
-   - Upload anh JPG/PNG neu muon.
-6. Vao `/owner/storeproducts`.
-7. Gan product vao store `TZ-HCM-01`.
+   - Upload ảnh JPG/PNG nếu muốn.
+6. Vào `/owner/storeproducts`.
+7. Gán product vào store `TZ-HCM-01`.
 8. Set `IsAvailable = true`.
 9. Set `SellingPrice = 95000`.
-10. Vao `/owner/pos`, chon store, search `MANUAL-POS-001`.
+10. Vào `/owner/pos`, chọn store, search `MANUAL-POS-001`.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Product hien trong POS.
-- Gia tren POS la `95000`, khong phai `100000`.
-- Neu tat `IsAvailable`, reload POS thi product khong hien.
-- Neu xoa `SellingPrice`, POS fallback ve `100000`.
+- Product hiện trong POS.
+- Giá trên POS là `95000`, không phải `100000`.
+- Nếu tắt `IsAvailable`, reload POS thì product không hiện.
+- Nếu xóa `SellingPrice`, POS fallback về `100000`.
 
 Test validate:
 
-- Tao product SKU trung: bi chan.
-- Tao barcode trung: bi chan.
-- Price am: bi chan.
-- Upload file khong phai anh: bi chan.
-- Upload anh > 5MB: bi chan.
+- Tạo product SKU trùng: bị chặn.
+- Tạo barcode trùng: bị chặn.
+- Price âm: bị chặn.
+- Upload file không phải ảnh: bị chặn.
+- Upload ảnh > 5MB: bị chặn.
 
-### 5.7. Test nhap kho
+### 5.7. Test nhập kho
 
-Muc tieu: ton kho tang va co transaction `Import`.
+Mục tiêu: tồn kho tăng và có transaction `Import`.
 
-Buoc test:
+Bước test:
 
-1. Dang nhap Owner hoac Staff co quyen store.
-2. Vao `/owner/inventory` hoac `/staff/inventory`.
-3. Bam Import.
-4. Chon store `TZ-HCM-01`.
-5. Chon product `Manual POS Product`.
-6. Nhap:
+1. Đăng nhập Owner hoặc Staff có quyền store.
+2. Vào `/owner/inventory` hoặc `/staff/inventory`.
+3. Bấm Import.
+4. Chọn store `TZ-HCM-01`.
+5. Chọn product `Manual POS Product`.
+6. Nhập:
    - Quantity: `10`
    - MinQuantity: `2`
    - Reason: `Manual import test`
 7. Submit.
-8. Quay lai inventory list, filter/search product.
+8. Quay lại inventory list, filter/search product.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Quantity tang len 10 neu truoc do chua co ton.
-- Low stock chi bat khi quantity > 0 va <= min quantity.
-- Audit log co `ImportStock`.
-- Neu quantity <= 0 thi bi chan.
+- Quantity tăng lên 10 nếu trước đó chưa có tồn.
+- Low stock chỉ bật khi quantity > 0 và <= min quantity.
+- Audit log có `ImportStock`.
+- Nếu quantity <= 0 thì bị chặn.
 
-### 5.8. Test xuat kho
+### 5.8. Test xuất kho
 
-Muc tieu: ton kho giam va co transaction `Export`.
+Mục tiêu: tồn kho giảm và có transaction `Export`.
 
-Buoc test:
+Bước test:
 
-1. Dam bao product co ton kho >= 5.
-2. Vao Inventory.
-3. Bam Export.
-4. Chon store/product.
-5. Nhap Quantity `3`, reason `Manual export test`.
+1. Đảm bảo product có tồn kho >= 5.
+2. Vào Inventory.
+3. Bấm Export.
+4. Chọn store/product.
+5. Nhập Quantity `3`, reason `Manual export test`.
 6. Submit.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Quantity giam di 3.
-- Neu xuat qua ton thi bi chan.
-- Audit log co `ExportStock`.
+- Quantity giảm đi 3.
+- Nếu xuất quá tồn thì bị chặn.
+- Audit log có `ExportStock`.
 
-### 5.9. Test dieu chinh kho
+### 5.9. Test điều chỉnh kho
 
-Muc tieu: cap nhat ton kho theo so thuc te va co transaction `Adjust`.
+Mục tiêu: cập nhật tồn kho theo số thực tế và có transaction `Adjust`.
 
-Buoc test:
+Bước test:
 
-1. Vao Inventory.
-2. Bam Adjust.
-3. Chon store/product.
-4. Nhap ActualQuantity `7`.
-5. Nhap MinQuantity `2`.
+1. Vào Inventory.
+2. Bấm Adjust.
+3. Chọn store/product.
+4. Nhập ActualQuantity `7`.
+5. Nhập MinQuantity `2`.
 6. Reason: `Manual cycle count`.
 7. Submit.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Quantity thanh 7.
-- Movement quantity trong transaction la chenh lech giua truoc va sau.
-- ActualQuantity < 0 bi chan.
-- Reason rong bi chan.
-- Audit log co `AdjustStock`.
+- Quantity thành 7.
+- Movement quantity trong transaction là chênh lệch giữa trước và sau.
+- ActualQuantity < 0 bị chặn.
+- Reason rỗng bị chặn.
+- Audit log có `AdjustStock`.
 
-### 5.10. Test mo ca
+### 5.10. Test mở ca
 
-Muc tieu: user phai mo ca truoc khi ban POS.
+Mục tiêu: user phải mở ca trước khi bán POS.
 
-Buoc test:
+Bước test:
 
-1. Dang nhap Staff.
-2. Vao `/staff/shifts`.
-3. Bam Open Shift.
-4. Chon store duoc gan.
-5. Nhap OpeningCash `500000`.
+1. Đăng nhập Staff.
+2. Vào `/staff/shifts`.
+3. Bấm Open Shift.
+4. Chọn store được gán.
+5. Nhập OpeningCash `500000`.
 6. Submit.
-7. Thu bam Open Shift lan nua.
+7. Thử bấm Open Shift lần nữa.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Ca dau tien mo thanh cong, status `Open`.
-- Mo ca lan hai khi ca cu con open bi chan.
-- Audit log co `OpenShift`.
+- Ca đầu tiên mở thành công, status `Open`.
+- Mở ca lần hai khi ca cũ còn open bị chặn.
+- Audit log có `OpenShift`.
 
-### 5.11. Test POS checkout thanh cong
+### 5.11. Test POS checkout thành công
 
-Muc tieu: dat hang tai POS, tao order, tru kho, tao payment, hien receipt.
+Mục tiêu: đặt hàng tại POS, tạo order, trừ kho, tạo payment, hiện receipt.
 
-Buoc test:
+Bước test:
 
-1. Dam bao da co ca `Open`.
-2. Dam bao product co ton kho.
-3. Vao `/staff/pos` hoac `/owner/pos`.
-4. Chon store cua ca dang mo.
+1. Đảm bảo đã có ca `Open`.
+2. Đảm bảo product có tồn kho.
+3. Vào `/staff/pos` hoặc `/owner/pos`.
+4. Chọn store của ca đang mở.
 5. Search product theo:
-   - Ten product.
+   - Tên product.
    - SKU.
    - Barcode.
-6. Bam add vao cart.
-7. Tang so luong len `2`.
-8. Chon payment method `Cash`.
-9. Nhap CustomerPaidAmount lon hon total.
-10. Bam Checkout.
+6. Bấm add vào cart.
+7. Tăng số lượng lên `2`.
+8. Chọn payment method `Cash`.
+9. Nhập CustomerPaidAmount lớn hơn total.
+10. Bấm Checkout.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- He thong redirect sang receipt/order detail.
-- Receipt hien:
+- Hệ thống redirect sang receipt/order detail.
+- Receipt hiện:
   - Order code.
   - Store.
   - Staff.
@@ -616,171 +616,174 @@ Ket qua mong doi:
   - Unit price.
   - Total.
   - Payment method.
-- Order status la `Completed`.
-- Payment status la `Paid`.
-- Inventory giam dung so luong.
-- Inventory transaction co type `Sale`.
-- Audit log co `CreateOrder`.
+- Order status là `Completed`.
+- Payment status là `Paid`.
+- Inventory giảm đúng số lượng.
+- Inventory transaction có type `Sale`.
+- Audit log có `CreateOrder`.
 
 ### 5.12. Test POS validation
 
-Muc tieu: backend khong tin cart/client.
+Mục tiêu: backend không tin cart/client.
 
-Case can test:
+Case cần test:
 
-1. Chua mo ca ma checkout:
-   - Ket qua: bi chan voi thong bao can mo ca.
-2. Cart rong:
-   - Ket qua: bi chan.
+1. Chưa mở ca mà checkout:
+   - Kết quả: bị chặn với thông báo cần mở ca.
+2. Cart rỗng:
+   - Kết quả: bị chặn.
 3. Quantity <= 0:
-   - Ket qua: item khong hop le, cart rong hoac bi chan.
-4. Ban qua ton:
-   - Ket qua: bi chan, khong tao order.
-5. Cash nhap tien khach dua nho hon total:
-   - Ket qua: bi chan.
+   - Kết quả: item không hợp lệ, cart rỗng hoặc bị chặn.
+4. Bán quá tồn:
+   - Kết quả: bị chặn, không tạo order.
+5. Cash nhập tiền khách đưa nhỏ hơn total:
+   - Kết quả: bị chặn.
 6. Product inactive/unavailable:
-   - Ket qua: khong hien tren POS hoac checkout bi chan neu client gui len.
+   - Kết quả: không hiện trên POS hoặc checkout bị chặn nếu client gửi lên.
 
-### 5.13. Test POS "realtime" bang 2 tab
+### 5.13. Test POS "realtime" bằng 2 tab
 
-Muc tieu: thay du lieu duoc ghi ngay sau checkout va cac man hinh khac cap nhat sau refresh.
+Mục tiêu: thấy SignalR đẩy thông báo và cập nhật stock ngay trên các tab đang mở.
 
-Chuan bi:
+Chuẩn bị:
 
-- Mo Tab A: `/staff/pos`.
-- Mo Tab B: `/staff/inventory`.
-- Mo Tab C: `/staff/orders`.
-- Cung dang nhap mot staff hoac dung 2 browser rieng neu muon tach session.
+- Mở Tab A: `/staff/pos`.
+- Mở Tab B: `/staff/inventory`.
+- Mở Tab C: `/staff/orders`.
+- Cùng đăng nhập một staff hoặc dùng 2 browser riêng nếu muốn tách session.
+- Trên mỗi tab, icon chuông trên topbar là nơi xem các live update đã nhận.
 
-Buoc test:
+Bước test:
 
-1. Tab B search product sap ban, ghi lai quantity hien tai.
-2. Tab A checkout product do quantity `1`.
+1. Tab B search product sắp bán, ghi lại quantity hiện tại.
+2. Tab A checkout product đó quantity `1`.
 3. Sau khi checkout, Tab A redirect sang receipt.
-4. Tab C reload `/staff/orders`.
-5. Tab B reload `/staff/inventory`.
+4. Quan sát Tab B mà không reload.
+5. Quan sát Tab C mà không reload.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Tab C thay order moi o tren danh sach.
-- Tab B thay inventory giam 1.
-- Receipt tren Tab A hien don vua tao.
-- Neu vao Audit Logs bang Owner/Admin va reload, thay `CreateOrder`.
+- Tab B hiện toast live và dòng inventory đang hiện giảm 1, row được highlight.
+- Tab A/POS product card cập nhật stock nếu vẫn đang ở POS.
+- Tab C nhận toast `Order created` và hiện banner yêu cầu Reload để tải order mới vào danh sách theo filter hiện tại.
+- Receipt trên Tab A hiện đơn vừa tạo.
+- Nếu vào Audit Logs bằng Owner/Admin và reload, thấy `CreateOrder`.
 
-Ket luan ve realtime hien tai:
+Kết luận về realtime hiện tại:
 
-- He thong da cap nhat du lieu ngay sau POST checkout.
-- Man hinh khac can reload moi thay thay doi.
-- Neu yeu cau realtime dung nghia, can bo sung SignalR sau nay cho order list, inventory stock badge, dashboard metric va audit feed.
+- Hệ thống đã có SignalR hub `/hubs/chainpos`.
+- Stock trên POS/Inventory cập nhật live khi item đang nằm trong màn hình hiện tại.
+- Orders/Payments/Subscription/Shifts có live toast và reload banner; một số row có sẵn sẽ được cập nhật status trực tiếp.
+- Nếu muốn order mới tự động chèn vào table không cần reload, cần bổ sung partial row rendering/API HTML row ở bước sau.
 
-### 5.14. Test cancel order va hoan kho
+### 5.14. Test cancel order và hoàn kho
 
-Muc tieu: huy don hoan kho dung.
+Mục tiêu: hủy đơn hoàn kho đúng.
 
-Buoc test:
+Bước test:
 
-1. Sau khi checkout thanh cong, vao receipt/order detail.
-2. Ghi lai product va quantity.
-3. Vao Inventory, ghi lai quantity sau ban.
-4. Quay lai order detail.
-5. Bam Cancel Order.
-6. Xac nhan confirm modal.
-7. Quay lai Inventory, reload product.
+1. Sau khi checkout thành công, vào receipt/order detail.
+2. Ghi lại product và quantity.
+3. Vào Inventory, ghi lại quantity sau bán.
+4. Quay lại order detail.
+5. Bấm Cancel Order.
+6. Xác nhận confirm modal.
+7. Quay lại Inventory, reload product.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
 - OrderStatus = `Cancelled`.
 - PaymentStatus = `Cancelled`.
 - Payment status = `Cancelled`.
-- Inventory tang lai dung quantity da ban.
-- Inventory transaction co type `Return`.
-- Audit log co `CancelOrder`.
-- Cancel order lan nua bi chan.
+- Inventory tăng lại đúng quantity đã bán.
+- Inventory transaction có type `Return`.
+- Audit log có `CancelOrder`.
+- Cancel order lần nữa bị chặn.
 
-### 5.15. Test dong ca
+### 5.15. Test đóng ca
 
-Muc tieu: he thong tinh tien mat du kien va chenh lech.
+Mục tiêu: hệ thống tính tiền mặt dự kiến và chênh lệch.
 
-Buoc test:
+Bước test:
 
-1. Mo ca voi OpeningCash `500000`.
-2. Checkout 2 don cash:
-   - Don 1 total `100000`.
-   - Don 2 total `150000`.
-3. Vao `/staff/shifts`.
-4. Bam Close Shift.
-5. Man close shift hien ExpectedCash = `750000`.
-6. Nhap ClosingCash `760000`.
+1. Mở ca với OpeningCash `500000`.
+2. Checkout 2 đơn cash:
+   - Đơn 1 total `100000`.
+   - Đơn 2 total `150000`.
+3. Vào `/staff/shifts`.
+4. Bấm Close Shift.
+5. Màn close shift hiện ExpectedCash = `750000`.
+6. Nhập ClosingCash `760000`.
 7. Submit.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
 - Shift status = `Closed`.
 - ExpectedCash = `500000 + 100000 + 150000 = 750000`.
 - DifferenceAmount = `760000 - 750000 = 10000`.
-- Audit log co `CloseShift`.
-- Sau khi dong ca, user can mo ca moi neu muon checkout tiep.
+- Audit log có `CloseShift`.
+- Sau khi đóng ca, user cần mở ca mới nếu muốn checkout tiếp.
 
-### 5.16. Test order list, filter va receipt
+### 5.16. Test order list, filter và receipt
 
-Muc tieu: order co the tim, loc, xem chi tiet va in receipt.
+Mục tiêu: order có thể tìm, lọc, xem chi tiết và in receipt.
 
-Buoc test:
+Bước test:
 
-1. Vao `/staff/orders` hoac `/owner/orders`.
-2. Search theo order code vua tao.
+1. Vào `/staff/orders` hoặc `/owner/orders`.
+2. Search theo order code vừa tạo.
 3. Filter theo store.
 4. Filter theo status `Completed`.
 5. Filter theo payment status `Paid`.
-6. Filter theo ngay ban.
-7. Vao detail.
-8. Bam print receipt neu co.
+6. Filter theo ngày bán.
+7. Vào detail.
+8. Bấm print receipt nếu có.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Filter tra dung don.
-- Owner thay order trong tenant.
-- Staff chi thay order trong store duoc gan.
-- Receipt hien du thong tin.
+- Filter trả đúng đơn.
+- Owner thấy order trong tenant.
+- Staff chỉ thấy order trong store được gán.
+- Receipt hiện đủ thông tin.
 
 ### 5.17. Test reports
 
-Muc tieu: bao cao doc dung report views va phan quyen dung.
+Mục tiêu: báo cáo đọc đúng report views và phân quyền đúng.
 
 Admin:
 
-1. Dang nhap Admin.
-2. Vao `/admin/reports`.
-3. Xem cac block:
+1. Đăng nhập Admin.
+2. Vào `/admin/reports`.
+3. Xem các block:
    - Daily sales.
    - Staff sales.
    - Inventory status.
    - System revenue.
-4. Filter thoi gian/tenant/store neu UI co.
+4. Filter thời gian/tenant/store nếu UI có.
 
 Owner:
 
-1. Dang nhap Owner.
-2. Vao `/owner/reports`.
+1. Đăng nhập Owner.
+2. Vào `/owner/reports`.
 3. Xem daily sales, staff sales, inventory status.
-4. Xac nhan khong thay System Revenue Report.
+4. Xác nhận không thấy System Revenue Report.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Admin thay bao cao toan platform.
-- Owner chi thay du lieu tenant minh.
-- Order vua checkout co the phan anh trong report sau khi reload neu report view tinh theo database.
+- Admin thấy báo cáo toàn platform.
+- Owner chỉ thấy dữ liệu tenant mình.
+- Order vừa checkout có thể phản ánh trong report sau khi reload nếu report view tính theo database.
 
 ### 5.18. Test subscription plan
 
-Muc tieu: admin quan ly goi SaaS.
+Mục tiêu: admin quản lý gói SaaS.
 
-Buoc test:
+Bước test:
 
-1. Dang nhap Admin.
-2. Vao `/admin/subscriptionplans`.
-3. Bam Create.
-4. Tao plan:
+1. Đăng nhập Admin.
+2. Vào `/admin/subscriptionplans`.
+3. Bấm Create.
+4. Tạo plan:
    - Name: `Manual Growth Plan`
    - Price: `299000`
    - BillingCycle: `Monthly`
@@ -788,169 +791,169 @@ Buoc test:
    - MaxStaff: `10`
    - MaxProducts: `100`
 5. Save.
-6. Edit plan, doi price hoac limit.
+6. Edit plan, đổi price hoặc limit.
 7. Deactivate plan.
-8. Activate lai.
+8. Activate lại.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Plan hien trong list.
-- Price < 0 bi chan.
-- MaxStores/MaxStaff/MaxProducts khong hop le bi chan.
-- Audit log co create/update/activate/deactivate.
-- Plan da co tenant dung khong bi xoa vat ly; deactivate thay vi xoa.
+- Plan hiện trong list.
+- Price < 0 bị chặn.
+- MaxStores/MaxStaff/MaxProducts không hợp lệ bị chặn.
+- Audit log có create/update/activate/deactivate.
+- Plan đã có tenant dùng không bị xóa vật lý; deactivate thay vì xóa.
 
-### 5.19. Test gan subscription cho tenant
+### 5.19. Test gán subscription cho tenant
 
-Muc tieu: admin gan plan moi cho tenant va owner thay duoc.
+Mục tiêu: admin gán plan mới cho tenant và owner thấy được.
 
-Buoc test:
+Bước test:
 
-1. Dang nhap Admin.
-2. Vao `/admin/subscriptions/create`.
-3. Chon tenant demo.
-4. Chon plan.
-5. Chon StartDate/EndDate.
-6. Chon Status `Active`.
-7. Neu form co payment option, tao pending system payment.
+1. Đăng nhập Admin.
+2. Vào `/admin/subscriptions/create`.
+3. Chọn tenant demo.
+4. Chọn plan.
+5. Chọn StartDate/EndDate.
+6. Chọn Status `Active`.
+7. Nếu form có payment option, tạo pending system payment.
 8. Submit.
 9. Logout Admin.
-10. Login Owner cua tenant do.
-11. Vao `/owner/subscription`.
+10. Login Owner của tenant đó.
+11. Vào `/owner/subscription`.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Owner thay current subscription moi.
-- Lich su subscription co ban ghi moi.
-- Neu tao payment, payment hien trong lich su thanh toan.
-- Audit log co `ChangeSubscription`.
+- Owner thấy current subscription mới.
+- Lịch sử subscription có bản ghi mới.
+- Nếu tạo payment, payment hiện trong lịch sử thanh toán.
+- Audit log có `ChangeSubscription`.
 
 ### 5.20. Test system payment
 
-Muc tieu: admin theo doi va cap nhat thanh toan SaaS.
+Mục tiêu: admin theo dõi và cập nhật thanh toán SaaS.
 
-Buoc test:
+Bước test:
 
-1. Dang nhap Admin.
-2. Vao `/admin/systempayments`.
-3. Filter/search neu UI co.
-4. Chon payment `Pending`.
-5. Bam Mark Paid.
-6. Kiem tra `PaidAt`.
-7. Chon payment khac, bam Mark Failed.
-8. Neu co invoice URL, bam link invoice.
+1. Đăng nhập Admin.
+2. Vào `/admin/systempayments`.
+3. Filter/search nếu UI có.
+4. Chọn payment `Pending`.
+5. Bấm Mark Paid.
+6. Kiểm tra `PaidAt`.
+7. Chọn payment khác, bấm Mark Failed.
+8. Nếu có invoice URL, bấm link invoice.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Payment paid co status `Paid`.
-- `PaidAt` duoc gan.
-- Payment failed co status `Failed`.
-- Invoice URL mo duoc neu la link hop le.
-- Audit log co `MarkSystemPaymentPaid`/`MarkSystemPaymentFailed`.
+- Payment paid có status `Paid`.
+- `PaidAt` được gán.
+- Payment failed có status `Failed`.
+- Invoice URL mở được nếu là link hợp lệ.
+- Audit log có `MarkSystemPaymentPaid`/`MarkSystemPaymentFailed`.
 
 ### 5.21. Test subscription limit
 
-Muc tieu: gioi han plan duoc ap dung khi tao store/staff/product.
+Mục tiêu: giới hạn plan được áp dụng khi tạo store/staff/product.
 
-Buoc test de thay truc quan:
+Bước test để thấy trực quan:
 
-1. Admin tao plan gioi han nho:
+1. Admin tạo plan giới hạn nhỏ:
    - MaxStores: `1`
    - MaxStaff: `1`
    - MaxProducts: `1`
-2. Admin gan plan do cho tenant test.
-3. Login Owner cua tenant test.
-4. Tao store thu nhat: thanh cong.
-5. Tao store thu hai: bi chan.
-6. Tao staff thu nhat: thanh cong.
-7. Tao staff thu hai: bi chan.
-8. Tao product thu nhat: thanh cong.
-9. Tao product thu hai: bi chan.
+2. Admin gán plan đó cho tenant test.
+3. Login Owner của tenant test.
+4. Tạo store thứ nhất: thành công.
+5. Tạo store thứ hai: bị chặn.
+6. Tạo staff thứ nhất: thành công.
+7. Tạo staff thứ hai: bị chặn.
+8. Tạo product thứ nhất: thành công.
+9. Tạo product thứ hai: bị chặn.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- He thong hien thong bao vuot gioi han subscription.
-- Du lieu khong duoc tao khi vuot limit.
+- Hệ thống hiện thông báo vượt giới hạn subscription.
+- Dữ liệu không được tạo khi vượt limit.
 
 ### 5.22. Test audit logs
 
-Muc tieu: thao tac quan trong co log, phan quyen log dung.
+Mục tiêu: thao tác quan trọng có log, phân quyền log đúng.
 
 Admin:
 
-1. Dang nhap Admin.
-2. Vao `/admin/auditlogs`.
+1. Đăng nhập Admin.
+2. Vào `/admin/auditlogs`.
 3. Filter action `Login`.
 4. Filter action `CreateOrder`.
 5. Filter action `ChangeSubscription`.
-6. Filter theo thoi gian.
+6. Filter theo thời gian.
 
 Owner:
 
-1. Dang nhap Owner.
-2. Vao `/owner/auditlogs`.
+1. Đăng nhập Owner.
+2. Vào `/owner/auditlogs`.
 3. Filter action `ImportStock`.
 4. Filter action `CreateOrder`.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Admin xem duoc log toan platform.
-- Owner chi xem log tenant minh.
-- Filter action/time/user/store tra ket qua dung.
+- Admin xem được log toàn platform.
+- Owner chỉ xem log tenant mình.
+- Filter action/time/user/store trả kết quả đúng.
 
-### 5.23. Test owner khong xem tenant khac
+### 5.23. Test owner không xem tenant khác
 
-Muc tieu: tenant isolation dung.
+Mục tiêu: tenant isolation đúng.
 
-Cach test truc quan:
+Cách test trực quan:
 
-1. Dung Admin tao owner A va owner B, moi owner co tenant rieng.
+1. Dùng Admin tạo owner A và owner B, mỗi owner có tenant riêng.
 2. Login owner A.
-3. Tao store/product co ten de nhan biet, vi du `ONLY OWNER A STORE`.
+3. Tạo store/product có tên để nhận biết, ví dụ `ONLY OWNER A STORE`.
 4. Logout.
 5. Login owner B.
-6. Vao Stores, Products, Inventory, Orders, Reports.
+6. Vào Stores, Products, Inventory, Orders, Reports.
 
-Ket qua mong doi:
+Kết quả mong đợi:
 
-- Owner B khong thay du lieu co ten `ONLY OWNER A STORE`.
-- Neu thu sua URL id cua owner A trong cac man detail, ket qua phai bi chan/not found/access denied.
+- Owner B không thấy dữ liệu có tên `ONLY OWNER A STORE`.
+- Nếu thử sửa URL id của owner A trong các màn detail, kết quả phải bị chặn/not found/access denied.
 
-## 6. Luong demo nen dung khi quay video hoac demo cho khach
+## 6. Luồng demo nên dùng khi quay video hoặc demo cho khách
 
-Neu can demo nhanh toan bo he thong, nen di theo thu tu sau:
+Nếu cần demo nhanh toàn bộ hệ thống, nên đi theo thứ tự sau:
 
 1. Login Admin.
-2. Mo dashboard de gioi thieu platform.
-3. Mo tenants/owners de gioi thieu SaaS multi-tenant.
-4. Mo subscription plans va system payments.
+2. Mở dashboard để giới thiệu platform.
+3. Mở tenants/owners để giới thiệu SaaS multi-tenant.
+4. Mở subscription plans và system payments.
 5. Login Owner demo.
-6. Mo stores/staff/products/store products.
-7. Mo inventory, nhap kho nhanh mot product.
-8. Mo shifts, mo ca.
-9. Mo POS, ban 1 don.
-10. Hien receipt.
-11. Mo inventory de thay ton giam.
-12. Mo orders, cancel don.
-13. Mo inventory de thay ton hoan lai.
-14. Dong ca.
-15. Mo reports.
-16. Mo audit logs de thay toan bo hanh dong vua lam.
+6. Mở stores/staff/products/store products.
+7. Mở inventory, nhập kho nhanh một product.
+8. Mở shifts, mở ca.
+9. Mở POS, bán 1 đơn.
+10. Hiện receipt.
+11. Mở inventory để thấy tồn giảm.
+12. Mở orders, cancel đơn.
+13. Mở inventory để thấy tồn hoàn lại.
+14. Đóng ca.
+15. Mở reports.
+16. Mở audit logs để thấy toàn bộ hành động vừa làm.
 
-## 7. Cac du lieu demo co san nen tan dung
+## 7. Các dữ liệu demo có sẵn nên tận dụng
 
-Store demo nen dung:
+Store demo nên dùng:
 
 - `TZ-HCM-01`
 - `TZ-HCM-02`
 
-Tai khoan demo:
+Tài khoản demo:
 
 - Admin: `admin@chainpos.local`
 - Owner: `owner@demo.local`
 - Staff: `staff01@demo.local`
 
-San pham demo co san:
+Sản phẩm demo có sẵn:
 
 - Apple MacBook Pro 14-inch M3 Pro 18GB/512GB
 - Apple MacBook Air 13-inch M3 8GB/256GB
@@ -962,22 +965,22 @@ San pham demo co san:
 - Samsung 990 PRO 1TB NVMe PCIe 4.0 SSD
 - Anker 737 Power Bank 24000mAh 140W
 
-Du lieu POS demo co san:
+Dữ liệu POS demo có sẵn:
 
-- Shift demo cho `TZ-HCM-01` va `TZ-HCM-02`.
-- Order demo ma `POS-DEMO-*`.
-- Payment demo bang `Cash`, `Card`, `BankTransfer`, `Momo`.
-- Inventory transaction demo `Sale` va `Return`.
+- Shift demo cho `TZ-HCM-01` và `TZ-HCM-02`.
+- Order demo mã `POS-DEMO-*`.
+- Payment demo bằng `Cash`, `Card`, `BankTransfer`, `Momo`.
+- Inventory transaction demo `Sale` và `Return`.
 
-Du lieu billing demo co san:
+Dữ liệu billing demo có sẵn:
 
 - Plan `Business Demo`.
 - Tenant subscription active.
-- System payment co trang thai `Paid`, `Pending`, `Failed`.
+- System payment có trạng thái `Paid`, `Pending`, `Failed`.
 
-## 8. Dieu he thong da co va chua co
+## 8. Điều hệ thống đã có và chưa có
 
-Da co:
+Đã có:
 
 - Authentication 3 role.
 - Tenant isolation.
@@ -989,37 +992,38 @@ Da co:
 - Reports.
 - Audit log viewer.
 - Demo data.
-- Unit/integration test buoc dau.
+- Unit/integration test bước đầu.
+- Realtime SignalR cho inventory, POS order, cancel order, shift, subscription và system payment.
 
-Chua co hoac nen bo sung sau:
+Chưa có hoặc nên bổ sung sau:
 
-- Realtime push bang SignalR/WebSocket.
 - Export Excel cho reports.
 - Owner dashboard low stock/recent orders.
-- Test tu dong cho tao owner/staff va admin billing.
-- Test manual sau hon cho tenant suspended va owner khong xem tenant khac.
+- Test tự động cho tạo owner/staff và admin billing.
+- Test manual sâu hơn cho tenant suspended và owner không xem tenant khác.
+- Tự động prepend order/payment mới vào table không cần reload.
 
-## 9. Goi y neu muon them realtime dung nghia
+## 9. Realtime hiện tại và hướng mở rộng
 
-Neu sau nay muon "dat hang realtime" dung nghia, nen bo sung:
+Realtime hiện tại đã có:
 
-1. SignalR hub cho POS/order/inventory.
-2. Khi checkout thanh cong, server broadcast:
+1. SignalR hub `/hubs/chainpos`.
+2. Group theo admin platform, tenant owner và store staff.
+3. Server broadcast khi:
    - Order created.
    - Inventory changed.
-   - Dashboard metrics changed.
-3. Man order list tu dong prepend order moi.
-4. Man inventory tu dong cap nhat quantity.
-5. Man dashboard tu dong cap nhat revenue/order count.
-6. Audit log viewer co the co live feed tuy nhu cau.
+   - Order cancelled.
+   - Shift opened/closed.
+   - Subscription changed.
+   - System payment changed.
+4. Client hiện toast, badge notification và notification dropdown.
+5. POS/Inventory cập nhật stock đang hiện trên màn hình.
+6. Orders/Shifts/Subscription/Payments hiện banner reload khi cần nạp lại danh sách.
 
-Acceptance criteria cho realtime sau nay:
+Nếu muốn nâng cấp tiếp:
 
-- Mo Tab A POS va Tab B Orders.
-- Checkout o Tab A.
-- Tab B tu hien order moi ma khong refresh.
-- Mo Tab C Inventory.
-- Ton kho tren Tab C tu giam ma khong refresh.
-- Neu cancel order, Tab C tu tang ton lai.
-
-Hien tai he thong chua lam phan nay, nen khi test dung he thong hien tai thi can refresh tab khac de thay du lieu moi.
+1. Thêm endpoint render partial row để order/payment mới tự động chèn vào table.
+2. Cập nhật dashboard metric live.
+3. Cập nhật report card live hoặc thông báo report cần reload.
+4. Thêm live audit feed cho Admin/Owner.
+5. Thêm reconnect indicator rõ hơn nếu mất kết nối SignalR.

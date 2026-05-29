@@ -11,7 +11,7 @@
         => item.Quantity <= 0 ? "Out of Stock" : item.IsLowStock ? "Low Stock" : "In Stock";
 }
 
-<div class="flex flex-col gap-5">
+<div class="flex flex-col gap-5" data-live-page="inventory" data-live-store-id="@(Model.StoreId?.ToString() ?? "")">
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <div class="flex items-center gap-2 text-sm text-gray-400 mb-0.5">
@@ -101,7 +101,7 @@
                     {
                         foreach (var item in Model.Items)
                         {
-                            <tr class="hover:bg-orange-50/30">
+                            <tr class="hover:bg-orange-50/30" data-realtime-inventory-row data-store-id="@item.StoreId" data-product-id="@item.ProductId" data-min-quantity="@item.MinQuantity">
                                 <td class="px-5 py-3.5 font-semibold text-gray-800">@item.ProductName</td>
                                 <td class="px-5 py-3.5 font-mono text-xs text-gray-500">@(item.Sku ?? "-")</td>
                                 <td class="px-5 py-3.5">
@@ -109,9 +109,9 @@
                                     <p class="font-mono text-xs text-gray-400">@item.StoreCode</p>
                                 </td>
                                 <td class="px-5 py-3.5"><span class="px-2.5 py-1 bg-orange-50 text-orange-700 rounded-lg text-xs font-semibold">@(item.CategoryName ?? "Uncategorized")</span></td>
-                                <td class="px-5 py-3.5 text-center font-bold text-gray-900">@item.Quantity.ToString("#,##0.###")</td>
-                                <td class="px-5 py-3.5 text-center text-gray-500">@item.MinQuantity.ToString("#,##0.###")</td>
-                                <td class="px-5 py-3.5"><span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @StatusClass(item)">@StatusText(item)</span></td>
+                                <td class="px-5 py-3.5 text-center font-bold text-gray-900" data-realtime-quantity>@item.Quantity.ToString("#,##0.###")</td>
+                                <td class="px-5 py-3.5 text-center text-gray-500" data-realtime-min-quantity>@item.MinQuantity.ToString("#,##0.###")</td>
+                                <td class="px-5 py-3.5"><span data-realtime-stock-status class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @StatusClass(item)">@StatusText(item)</span></td>
                                 <td class="px-5 py-3.5">
                                     <div class="flex items-center gap-1">
                                         <a asp-area="@Model.AreaName" asp-controller="Inventory" asp-action="Import" asp-route-storeId="@item.StoreId" asp-route-productId="@item.ProductId" class="px-2.5 py-1 bg-orange-50 text-orange-600 text-xs font-semibold rounded-lg hover:bg-orange-100">+ Import</a>

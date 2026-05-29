@@ -2,6 +2,7 @@ using ChainPOS.Constants;
 using ChainPOS.Models;
 using ChainPOS.Services.Audit;
 using ChainPOS.Services.Common;
+using ChainPOS.Services.Realtime;
 using ChainPOS.Services.Security;
 using ChainPOS.ViewModels.Sales;
 using Microsoft.EntityFrameworkCore;
@@ -14,17 +15,20 @@ public sealed class OrderService : IOrderService
     private readonly ICurrentUserService _currentUser;
     private readonly IStoreAccessService _storeAccess;
     private readonly IAuditLogService _auditLog;
+    private readonly IRealtimeNotifier _realtimeNotifier;
 
     public OrderService(
         StoreFlowDbContext db,
         ICurrentUserService currentUser,
         IStoreAccessService storeAccess,
-        IAuditLogService auditLog)
+        IAuditLogService auditLog,
+        IRealtimeNotifier realtimeNotifier)
     {
         _db = db;
         _currentUser = currentUser;
         _storeAccess = storeAccess;
         _auditLog = auditLog;
+        _realtimeNotifier = realtimeNotifier;
     }
 
     public async Task<OrderIndexViewModel> GetOrdersAsync(
@@ -215,6 +219,12 @@ public sealed class OrderService : IOrderService
         }
 
         await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+        var store = await _db.Stores
+            .AsNoTracking()
+            .Where(x => x.TenantId == tenantId && x.Id == order.StoreId)
+            .Select(x => new { x.Name, x.Code })
+            .FirstAsync(cancellationToken);
+        var inventoryEvents = new List<InventoryChangedEvent>();
         foreach (var item in order.OrderItems)
         {
             var inventory = await _db.Inventories.FirstOrDefaultAsync(
@@ -257,6 +267,19 @@ public sealed class OrderService : IOrderService
                 CreatedBy = userId,
                 CreatedAt = DateTime.UtcNow
             });
+            inventoryEvents.Add(new InventoryChangedEvent(
+                tenantId,
+                order.StoreId,
+                item.ProductId,
+                store.Name,
+                store.Code,
+                item.ProductName,
+                item.Sku,
+                inventory.Quantity,
+                inventory.MinQuantity,
+                InventoryTransactionTypes.Return,
+                item.Quantity,
+                DateTime.UtcNow));
         }
 
         var oldValue = $"Status={order.OrderStatus}; PaymentStatus={order.PaymentStatus}; Total={order.TotalAmount:#,##0.##}";
@@ -283,6 +306,20 @@ public sealed class OrderService : IOrderService
             storeId: order.StoreId,
             cancellationToken: cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        await _realtimeNotifier.OrderCancelledAsync(
+            new OrderCancelledEvent(
+                tenantId,
+                order.StoreId,
+                order.Id,
+                order.OrderCode,
+                order.PaymentStatus,
+                order.OrderStatus,
+                order.CancelledAt ?? DateTime.UtcNow),
+            cancellationToken);
+        foreach (var inventoryEvent in inventoryEvents)
+        {
+            await _realtimeNotifier.InventoryChangedAsync(inventoryEvent, cancellationToken);
+        }
 
         return (true, null);
     }

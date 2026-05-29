@@ -2,6 +2,7 @@ using ChainPOS.Constants;
 using ChainPOS.Models;
 using ChainPOS.Services.Audit;
 using ChainPOS.Services.Common;
+using ChainPOS.Services.Realtime;
 using ChainPOS.ViewModels.Admin.SubscriptionPlans;
 using ChainPOS.ViewModels.Admin.Subscriptions;
 using ChainPOS.ViewModels.Admin.SystemPayments;
@@ -15,15 +16,18 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
     private readonly StoreFlowDbContext _db;
     private readonly IAuditLogService _auditLog;
     private readonly ICurrentUserService _currentUser;
+    private readonly IRealtimeNotifier _realtimeNotifier;
 
     public SubscriptionManagementService(
         StoreFlowDbContext db,
         IAuditLogService auditLog,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IRealtimeNotifier realtimeNotifier)
     {
         _db = db;
         _auditLog = auditLog;
         _currentUser = currentUser;
+        _realtimeNotifier = realtimeNotifier;
     }
 
     public async Task<SubscriptionPlanIndexViewModel> GetPlansAsync(
@@ -322,9 +326,10 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
         };
         _db.TenantSubscriptions.Add(newSubscription);
 
+        SystemPayment? pendingPayment = null;
         if (model.CreatePendingPayment && plan.Price > 0)
         {
-            _db.SystemPayments.Add(new SystemPayment
+            pendingPayment = new SystemPayment
             {
                 Id = Guid.NewGuid(),
                 TenantId = tenant.Id,
@@ -334,7 +339,8 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
                 Status = PaymentStatuses.Pending,
                 InvoiceUrl = TrimToNull(model.InvoiceUrl),
                 CreatedAt = DateTime.UtcNow
-            });
+            };
+            _db.SystemPayments.Add(pendingPayment);
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -348,6 +354,33 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
             cancellationToken: cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
+        await _realtimeNotifier.SubscriptionChangedAsync(
+            new SubscriptionChangedEvent(
+                tenant.Id,
+                newSubscription.Id,
+                tenant.Name,
+                plan.Name,
+                newSubscription.Status,
+                newSubscription.StartDate,
+                newSubscription.EndDate,
+                DateTime.UtcNow),
+            cancellationToken);
+        if (pendingPayment is not null)
+        {
+            await _realtimeNotifier.SystemPaymentChangedAsync(
+                new SystemPaymentChangedEvent(
+                    tenant.Id,
+                    pendingPayment.Id,
+                    tenant.Name,
+                    plan.Name,
+                    pendingPayment.Amount,
+                    pendingPayment.Method,
+                    pendingPayment.Status,
+                    pendingPayment.PaidAt,
+                    DateTime.UtcNow),
+                cancellationToken);
+        }
+
         return (true, null, newSubscription.Id);
     }
 
@@ -432,6 +465,7 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
             PaymentAuditValue(payment),
             payment.TenantId,
             cancellationToken: cancellationToken);
+        await NotifySystemPaymentChangedAsync(payment, cancellationToken);
 
         return (true, null);
     }
@@ -441,7 +475,11 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
         string? currentUserId,
         CancellationToken cancellationToken = default)
     {
-        var payment = await _db.SystemPayments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var payment = await _db.SystemPayments
+            .Include(x => x.Tenant)
+            .Include(x => x.Subscription)
+            .ThenInclude(x => x.Plan)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (payment is null)
         {
             return (false, "Payment not found.");
@@ -460,6 +498,7 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
             PaymentAuditValue(payment),
             payment.TenantId,
             cancellationToken: cancellationToken);
+        await NotifySystemPaymentChangedAsync(payment, cancellationToken);
 
         return (true, null);
     }
@@ -576,6 +615,22 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
             InvoiceUrl = payment.InvoiceUrl,
             CreatedAt = payment.CreatedAt
         };
+    }
+
+    private async Task NotifySystemPaymentChangedAsync(SystemPayment payment, CancellationToken cancellationToken)
+    {
+        await _realtimeNotifier.SystemPaymentChangedAsync(
+            new SystemPaymentChangedEvent(
+                payment.TenantId,
+                payment.Id,
+                payment.Tenant.Name,
+                payment.Subscription.Plan.Name,
+                payment.Amount,
+                payment.Method,
+                payment.Status,
+                payment.PaidAt,
+                DateTime.UtcNow),
+            cancellationToken);
     }
 
     private static OwnerSubscriptionItemViewModel MapOwnerSubscription(TenantSubscription subscription)

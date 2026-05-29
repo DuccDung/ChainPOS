@@ -64,6 +64,7 @@ Các nhóm model quan trọng:
 - Sidebar/topbar/alert/confirm modal dùng chung.
 - Dashboard theo role.
 - Menu hiển thị theo đúng quyền.
+- SignalR realtime notification cho các màn dashboard layout.
 
 ### Admin quản lý platform
 
@@ -133,6 +134,14 @@ Các nhóm model quan trọng:
 - Nếu `SellingPrice` rỗng, POS sẽ dùng `Products.Price`.
 - Đã có helper `GetEffectiveSellingPriceAsync` để POS ưu tiên `StoreProducts.SellingPrice`, fallback `Products.Price`.
 - Ghi audit log cho assign/update/enable/disable.
+
+### Realtime
+
+- SignalR hub tại `/hubs/chainpos`.
+- Client tự nhận live toast, badge notification và dropdown thông báo.
+- POS/Inventory cập nhật stock live cho sản phẩm đang hiển thị.
+- Orders/Shifts/Subscription/Payments hiển thị banner yêu cầu reload khi dữ liệu nền thay đổi.
+- Sự kiện realtime hiện có: inventory changed, order created, order cancelled, shift changed, subscription changed, system payment changed.
 
 ## Dữ liệu demo development
 
@@ -280,11 +289,12 @@ Nguyên tắc quan trọng:
 
 ## Trạng thái tiếp theo
 
-Các phần vừa hoàn tất thêm gồm audit log viewer, subscription/admin billing UI, dữ liệu demo billing, test tự động bước đầu và hardening connection string.
+Các phần vừa hoàn tất thêm gồm audit log viewer, subscription/admin billing UI, dữ liệu demo billing, test tự động bước đầu, hardening connection string và realtime SignalR.
 
 Các mục còn nên làm tiếp theo:
 
 - Bổ sung test cho tạo owner/staff và các luồng admin billing chi tiết.
 - Export Excel cho report nếu cần.
 - Bổ sung low stock/recent orders vào Owner dashboard.
+- Tự động prepend order/payment mới vào table realtime nếu cần bỏ reload banner.
 - Rà soát security checklist còn lại như upload limit và manual permission test.

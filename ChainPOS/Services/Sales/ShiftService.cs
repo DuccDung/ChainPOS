@@ -2,6 +2,7 @@ using ChainPOS.Constants;
 using ChainPOS.Models;
 using ChainPOS.Services.Audit;
 using ChainPOS.Services.Common;
+using ChainPOS.Services.Realtime;
 using ChainPOS.Services.Security;
 using ChainPOS.ViewModels.Sales;
 using Microsoft.EntityFrameworkCore;
@@ -14,17 +15,20 @@ public sealed class ShiftService : IShiftService
     private readonly ICurrentUserService _currentUser;
     private readonly IStoreAccessService _storeAccess;
     private readonly IAuditLogService _auditLog;
+    private readonly IRealtimeNotifier _realtimeNotifier;
 
     public ShiftService(
         StoreFlowDbContext db,
         ICurrentUserService currentUser,
         IStoreAccessService storeAccess,
-        IAuditLogService auditLog)
+        IAuditLogService auditLog,
+        IRealtimeNotifier realtimeNotifier)
     {
         _db = db;
         _currentUser = currentUser;
         _storeAccess = storeAccess;
         _auditLog = auditLog;
+        _realtimeNotifier = realtimeNotifier;
     }
 
     public async Task<ShiftIndexViewModel> GetShiftsAsync(
@@ -164,6 +168,7 @@ public sealed class ShiftService : IShiftService
             storeId: shift.StoreId,
             cancellationToken: cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        await NotifyShiftChangedAsync(shift, cancellationToken);
 
         return (true, null, shift.Id);
     }
@@ -263,6 +268,7 @@ public sealed class ShiftService : IShiftService
             storeId: shift.StoreId,
             cancellationToken: cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        await NotifyShiftChangedAsync(shift, cancellationToken);
 
         return (true, null);
     }
@@ -286,6 +292,36 @@ public sealed class ShiftService : IShiftService
                 && x.Order.ShiftId == shiftId
                 && x.Order.OrderStatus != OrderStatuses.Cancelled)
             .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0m;
+    }
+
+    private async Task NotifyShiftChangedAsync(Shift shift, CancellationToken cancellationToken)
+    {
+        var store = await _db.Stores
+            .AsNoTracking()
+            .Where(x => x.TenantId == shift.TenantId && x.Id == shift.StoreId)
+            .Select(x => new { x.Name, x.Code })
+            .FirstAsync(cancellationToken);
+        var openedBy = await _db.AspNetUsers
+            .AsNoTracking()
+            .Where(x => x.Id == shift.OpenedBy)
+            .Select(x => x.FullName ?? x.UserName ?? x.Email ?? x.Id)
+            .FirstOrDefaultAsync(cancellationToken) ?? shift.OpenedBy;
+
+        await _realtimeNotifier.ShiftChangedAsync(
+            new ShiftChangedEvent(
+                shift.TenantId,
+                shift.StoreId,
+                shift.Id,
+                store.Name,
+                store.Code,
+                openedBy,
+                shift.Status,
+                shift.OpeningCash,
+                shift.ClosingCash,
+                shift.ExpectedCash,
+                shift.DifferenceAmount,
+                DateTime.UtcNow),
+            cancellationToken);
     }
 
     private async Task<IReadOnlyList<StoreOptionViewModel>> GetStoreOptionsAsync(
