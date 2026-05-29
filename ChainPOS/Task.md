@@ -281,7 +281,9 @@ Mục tiêu: app đăng nhập được, phân quyền được, có current use
 - [x] Gán staff demo vào store demo qua `UserStores`.
 - [x] Hash password admin bằng `PasswordHasher<AspNetUser>`.
 - [x] Không hard-code password production.
-- [ ] Ghi audit log khi seed nếu cần.
+- [x] Seed dữ liệu demo đầy đủ cho owner/tenant/store/staff/category/product/store product.
+- [x] Seed subscription plan demo để kiểm tra `MaxStores`, `MaxStaff`, `MaxProducts`.
+- [x] Ghi audit log khi seed nếu cần.
 
 ### 5.5. Acceptance criteria Phase 1
 
@@ -452,10 +454,11 @@ Mục tiêu: owner quản lý danh mục, sản phẩm và bật/tắt sản ph�
 
 ### 9.3. Store product
 
-- [ ] Tạo UI gán product vào store.
-- [ ] Set `IsAvailable`.
-- [ ] Set `SellingPrice` riêng theo store nếu có.
+- [x] Tạo UI gán product vào store.
+- [x] Set `IsAvailable`.
+- [x] Set `SellingPrice` riêng theo store nếu có.
 - [ ] Khi bán POS, ưu tiên `StoreProducts.SellingPrice`, fallback `Products.Price`.
+  - [x] Đã chuẩn bị helper `GetEffectiveSellingPriceAsync`; chờ tích hợp khi làm POS.
 
 ## 10. Phase 6: Inventory
 
@@ -603,6 +606,7 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 - [x] Ghi audit log cho `CreateStaff`, `ResetStaffPassword`, `LockStaff`, `UnlockStaff`, `AssignStaffStore`, `EnableStaffStore`, `DisableStaffStore`.
 - [x] Ghi audit log cho `CreateCategory`, `UpdateCategory`, `ActivateCategory`, `DeactivateCategory`, `DeleteCategory`.
 - [x] Ghi audit log cho `CreateProduct`, `UpdateProduct`, `ActivateProduct`, `DeactivateProduct`, `DeleteProduct`.
+- [x] Ghi audit log cho `AssignStoreProduct`, `UpdateStoreProduct`, `EnableStoreProduct`, `DisableStoreProduct`.
 - [ ] Admin xem toàn bộ audit log.
 - [ ] Owner chỉ xem audit log trong tenant của mình.
 - [ ] Filter audit theo user, store, action, thời gian.
@@ -629,6 +633,7 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 - [x] Anonymous truy cập `/owner` bị redirect login.
 - [x] Anonymous truy cập `/staff` bị redirect login.
 - [x] Staff truy cập `/owner/products` bị access denied.
+- [x] Staff truy cập `/owner/storeproducts` bị access denied.
 - [x] Owner truy cập `/admin/owners` bị access denied.
 - [ ] Staff đổi store id sang store chưa được gán bị chặn.
 - [ ] Owner không xem được tenant khác.
@@ -643,6 +648,8 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 - [x] Owner gán staff vào store.
 - [x] Staff login và chỉ thấy store được gán.
 - [x] Owner tạo product.
+- [x] Owner gán product vào store.
+- [x] Owner chỉnh selling price và available cho store product.
 - [ ] Owner/staff nhập kho.
 - [ ] POS tạo order trừ kho đúng.
 - [ ] Cancel order hoàn kho đúng.

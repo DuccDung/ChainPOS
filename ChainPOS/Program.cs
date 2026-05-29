@@ -34,6 +34,7 @@ builder.Services.AddScoped<IOwnerStoreService, OwnerStoreService>();
 builder.Services.AddScoped<IOwnerStaffService, OwnerStaffService>();
 builder.Services.AddScoped<IOwnerCategoryService, OwnerCategoryService>();
 builder.Services.AddScoped<IOwnerProductService, OwnerProductService>();
+builder.Services.AddScoped<IOwnerStoreProductService, OwnerStoreProductService>();
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

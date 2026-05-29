@@ -1,0 +1,158 @@
+@model ChainPOS.ViewModels.Owner.StoreProducts.StoreProductIndexViewModel
+@{
+    ViewData["Title"] = "Store Products";
+    ViewData["ActiveMenu"] = "store-products";
+}
+
+<div class="flex flex-col gap-5">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-gray-400 mb-0.5">
+                <a asp-area="Owner" asp-controller="Dashboard" asp-action="Index" class="hover:text-orange-500">Dashboard</a>
+                <span>/</span><span class="text-gray-600 font-medium">Catalog</span>
+                <span>/</span><span class="text-orange-500 font-medium">Store Products</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">Store Product Assignment</h1>
+        </div>
+        <a asp-action="Assign" asp-route-storeId="@Model.StoreId" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-sm font-semibold rounded-xl hover:from-orange-600 hover:to-amber-600 transition-all shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Assign Product
+        </a>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-xs text-gray-400 mb-2">Assignments</p><p class="text-2xl font-bold text-gray-900">@Model.TotalAssignments</p><p class="text-xs text-gray-400 mt-1">@Model.StoreCount store(s)</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-xs text-gray-400 mb-2">Available</p><p class="text-2xl font-bold text-green-600">@Model.AvailableAssignments</p><p class="text-xs text-green-600 font-medium mt-1">Visible in POS</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-xs text-gray-400 mb-2">Unavailable</p><p class="text-2xl font-bold text-amber-500">@Model.UnavailableAssignments</p><p class="text-xs text-amber-600 font-medium mt-1">Hidden from POS</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-xs text-gray-400 mb-2">Catalog Products</p><p class="text-2xl font-bold text-gray-900">@Model.ProductCount</p><p class="text-xs text-gray-400 mt-1">Tenant catalog</p></div>
+    </div>
+
+    <div class="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start gap-3">
+        <div class="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </div>
+        <div>
+            <p class="font-semibold text-amber-800 text-sm">Store-specific price rule</p>
+            <p class="text-xs text-amber-600 mt-0.5">If Selling Price is empty, POS will use the catalog product price.</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+        <div class="flex flex-col md:flex-row md:items-center justify-between px-5 py-4 gap-3 border-b border-gray-50">
+            <div>
+                <h3 class="font-bold text-gray-900">Assigned Products</h3>
+                <p class="text-xs text-gray-400 mt-0.5">Showing @Model.StoreProducts.Count record(s)</p>
+            </div>
+            <form asp-action="Index" method="get" class="flex items-center gap-2 flex-wrap">
+                <div class="relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" />
+                    </svg>
+                    <input asp-for="Search" placeholder="Search products..." class="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 w-52" />
+                </div>
+                <select asp-for="StoreId" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 text-gray-600">
+                    <option value="">All Stores</option>
+                    @foreach (var store in Model.Stores)
+                    {
+                        <option value="@store.Id">@store.Name (@store.Code)</option>
+                    }
+                </select>
+                <select asp-for="Availability" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 text-gray-600">
+                    <option value="">All Statuses</option>
+                    <option value="available">Available</option>
+                    <option value="unavailable">Unavailable</option>
+                </select>
+                <button type="submit" class="px-4 py-2 bg-orange-500 text-white text-sm font-semibold rounded-xl hover:bg-orange-600">Filter</button>
+            </form>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full data-table text-sm">
+                <thead>
+                    <tr class="bg-amber-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                        <th class="px-5 py-3 text-left">Store</th>
+                        <th class="px-5 py-3 text-left">Product</th>
+                        <th class="px-5 py-3 text-left">SKU</th>
+                        <th class="px-5 py-3 text-left">Category</th>
+                        <th class="px-5 py-3 text-right">Base Price</th>
+                        <th class="px-5 py-3 text-right">Selling Price</th>
+                        <th class="px-5 py-3 text-right">POS Price</th>
+                        <th class="px-5 py-3 text-left">Status</th>
+                        <th class="px-5 py-3 text-left">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    @if (Model.StoreProducts.Count == 0)
+                    {
+                        <tr><td colspan="9" class="px-5 py-10 text-center text-sm text-gray-400">No store product assignments found.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model.StoreProducts)
+                        {
+                            <tr class="hover:bg-orange-50/30">
+                                <td class="px-5 py-3.5">
+                                    <p class="font-semibold text-gray-800 text-sm">@item.StoreName</p>
+                                    <p class="font-mono text-xs text-gray-400">@item.StoreCode</p>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-9 h-9 bg-gradient-to-br from-orange-400 to-amber-400 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0">@item.ProductName[0]</div>
+                                        <span class="font-semibold text-gray-800">@item.ProductName</span>
+                                    </div>
+                                </td>
+                                <td class="px-5 py-3.5 font-mono text-xs text-gray-500">@(item.Sku ?? "-")</td>
+                                <td class="px-5 py-3.5"><span class="px-2.5 py-1 bg-orange-50 text-orange-700 rounded-lg text-xs font-semibold">@(item.CategoryName ?? "Uncategorized")</span></td>
+                                <td class="px-5 py-3.5 text-right font-semibold text-gray-900">@item.BasePrice.ToString("#,##0.##")</td>
+                                <td class="px-5 py-3.5 text-right font-semibold text-gray-900">@(item.SellingPrice?.ToString("#,##0.##") ?? "-")</td>
+                                <td class="px-5 py-3.5 text-right font-bold text-orange-600">@item.EffectivePrice.ToString("#,##0.##")</td>
+                                <td class="px-5 py-3.5">
+                                    @if (item.IsAvailable)
+                                    {
+                                        <span class="inline-flex rounded-full border border-green-100 bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700">Available</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="inline-flex rounded-full border border-amber-100 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">Unavailable</span>
+                                    }
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <div class="flex items-center gap-1">
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="p-1.5 rounded-lg hover:bg-amber-50 text-gray-400 hover:text-amber-500 transition-colors" title="Edit">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                        </a>
+                                        @if (item.IsAvailable)
+                                        {
+                                            <form id="store-product-disable-@item.Id" asp-action="Disable" asp-route-id="@item.Id" asp-route-storeId="@Model.StoreId" method="post" onsubmit="return openConfirmModal(this.id, 'Disable product', 'This product will be hidden from this store.');">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-semibold rounded-lg hover:bg-amber-100">Disable</button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <form id="store-product-enable-@item.Id" asp-action="Enable" asp-route-id="@item.Id" asp-route-storeId="@Model.StoreId" method="post" onsubmit="return openConfirmModal(this.id, 'Enable product', 'This product will be visible for this store.');">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="px-2.5 py-1 bg-green-50 text-green-700 text-xs font-semibold rounded-lg hover:bg-green-100">Enable</button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="flex items-center justify-between px-5 py-3 border-t border-gray-50 text-xs text-gray-400">
+            <span>Showing @Model.StoreProducts.Count of @Model.TotalAssignments assignments</span>
+            <div class="flex items-center gap-1">
+                <button class="px-3 py-1.5 rounded-lg text-gray-300" type="button" disabled>Prev</button>
+                <button class="px-3 py-1.5 rounded-lg bg-orange-500 text-white font-semibold" type="button">1</button>
+                <button class="px-3 py-1.5 rounded-lg text-gray-300" type="button" disabled>Next</button>
+            </div>
+        </div>
+    </div>
+</div>

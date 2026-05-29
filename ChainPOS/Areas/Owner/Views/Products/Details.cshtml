@@ -26,6 +26,7 @@
         </div>
         <div class="flex flex-wrap items-center gap-2">
             <a asp-action="Index" class="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:border-orange-200 hover:text-orange-600">Back</a>
+            <a asp-area="Owner" asp-controller="StoreProducts" asp-action="Assign" asp-route-productId="@Model.Id" class="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-700 hover:bg-orange-100">Assign Store</a>
             <a asp-action="Edit" asp-route-id="@Model.Id" class="rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600">Edit</a>
             @if (Model.IsActive)
             {
