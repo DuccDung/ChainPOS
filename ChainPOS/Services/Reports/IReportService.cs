@@ -8,4 +8,9 @@ public interface IReportService
         string areaName,
         ReportsFilterViewModel? filter,
         CancellationToken cancellationToken = default);
+
+    Task<(byte[] Content, string FileName, string ContentType)> ExportReportsAsync(
+        string areaName,
+        ReportsFilterViewModel? filter,
+        CancellationToken cancellationToken = default);
 }

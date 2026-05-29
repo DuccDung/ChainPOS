@@ -23,4 +23,6 @@ public sealed class DashboardViewModel
     public IReadOnlyList<DashboardMetricViewModel> Metrics { get; set; } = Array.Empty<DashboardMetricViewModel>();
 
     public IReadOnlyList<DashboardActivityViewModel> Activities { get; set; } = Array.Empty<DashboardActivityViewModel>();
+
+    public IReadOnlyList<DashboardRecentOrderViewModel> RecentOrders { get; set; } = Array.Empty<DashboardRecentOrderViewModel>();
 }

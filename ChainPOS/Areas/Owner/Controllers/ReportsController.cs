@@ -23,4 +23,10 @@ public sealed class ReportsController : Controller
         var model = await _reportService.GetReportsAsync(AreaName, filter, cancellationToken);
         return View(model);
     }
+
+    public async Task<IActionResult> Export(ReportsFilterViewModel filter, CancellationToken cancellationToken)
+    {
+        var export = await _reportService.ExportReportsAsync(AreaName, filter, cancellationToken);
+        return File(export.Content, export.ContentType, export.FileName);
+    }
 }

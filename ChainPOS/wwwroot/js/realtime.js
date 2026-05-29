@@ -20,6 +20,13 @@
       ? '-'
       : date.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
   };
+  const escapeHtml = value => (value ?? '').toString()
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+  const parseMetricNumber = text => Number((text || '').replace(/[^\d.-]/g, '')) || 0;
 
   function currentLivePage() {
     return document.querySelector('[data-live-page]')?.dataset.livePage || '';
@@ -234,6 +241,115 @@
     return `badge-pending ${base}`;
   }
 
+  function updateDashboardMetric(key, updater) {
+    const valueNode = document.querySelector(`[data-dashboard-metric="${key}"] [data-dashboard-metric-value]`);
+    if (!valueNode) return false;
+    const next = updater(valueNode.textContent || '0');
+    valueNode.textContent = next;
+    highlight(valueNode.closest('[data-dashboard-metric]'));
+    return true;
+  }
+
+  function incrementDashboardMetric(key, delta = 1) {
+    return updateDashboardMetric(key, text => formatNumber(parseMetricNumber(text) + delta));
+  }
+
+  function addDashboardCurrency(key, delta) {
+    return updateDashboardMetric(key, text => {
+      const prefix = text.includes('$') ? '$' : '';
+      return `${prefix}${formatNumber(parseMetricNumber(text) + Number(delta || 0))}`;
+    });
+  }
+
+  function prependOrderRow(payload) {
+    const table = document.querySelector('[data-live-orders-table]');
+    const tbody = table?.querySelector('tbody');
+    if (!tbody) return false;
+
+    const storeId = normalizeId(read(payload, 'storeId', 'StoreId'));
+    const pageStoreId = currentStoreId();
+    if (pageStoreId && pageStoreId !== storeId) return false;
+
+    const orderId = read(payload, 'orderId', 'OrderId');
+    if (!orderId || tbody.querySelector(`[data-order-id="${orderId}"]`)) return false;
+
+    const area = window.location.pathname.toLowerCase().startsWith('/staff') ? 'staff' : 'owner';
+    const orderStatus = read(payload, 'orderStatus', 'OrderStatus') || 'Completed';
+    const paymentStatus = read(payload, 'paymentStatus', 'PaymentStatus') || 'Paid';
+    const row = document.createElement('tr');
+    row.className = 'hover:bg-orange-50/30';
+    row.dataset.realtimeOrderRow = 'true';
+    row.dataset.orderId = orderId;
+    row.dataset.storeId = storeId;
+    row.innerHTML = `
+      <td class="px-5 py-3.5 font-mono text-sm text-orange-500 font-semibold">${escapeHtml(read(payload, 'orderCode', 'OrderCode'))}</td>
+      <td class="px-5 py-3.5"><p class="font-semibold text-gray-800">${escapeHtml(read(payload, 'storeName', 'StoreName'))}</p><p class="font-mono text-xs text-gray-400">${escapeHtml(read(payload, 'storeCode', 'StoreCode'))}</p></td>
+      <td class="px-5 py-3.5 text-gray-600">${escapeHtml(read(payload, 'staffName', 'StaffName') || '-')}</td>
+      <td class="px-5 py-3.5 text-center font-bold text-gray-900">${formatNumber(read(payload, 'itemCount', 'ItemCount'))}</td>
+      <td class="px-5 py-3.5 text-right font-bold text-gray-900">${formatNumber(read(payload, 'totalAmount', 'TotalAmount'))}</td>
+      <td class="px-5 py-3.5"><span data-realtime-payment-status class="${badgeClasses(paymentStatus, 'payment')}">${escapeHtml(paymentStatus)}</span></td>
+      <td class="px-5 py-3.5"><span data-realtime-order-status class="${badgeClasses(orderStatus, 'order')}">${escapeHtml(orderStatus)}</span></td>
+      <td class="px-5 py-3.5 text-gray-400 text-xs">${formatDateTime(read(payload, 'createdAt', 'CreatedAt'))}</td>
+      <td class="px-5 py-3.5"><a href="/${area}/orders/details/${orderId}" class="px-2.5 py-1 bg-orange-50 text-orange-600 text-xs font-semibold rounded-lg hover:bg-orange-100">View</a></td>`;
+
+    const empty = tbody.querySelector('td[colspan]');
+    if (empty) empty.closest('tr')?.remove();
+    tbody.prepend(row);
+    highlight(row);
+    return true;
+  }
+
+  function prependDashboardOrder(payload) {
+    const tbody = document.querySelector('[data-dashboard-recent-orders]');
+    if (!tbody) return false;
+    const orderId = read(payload, 'orderId', 'OrderId');
+    if (!orderId || tbody.querySelector(`[data-order-id="${orderId}"]`)) return false;
+    const orderStatus = read(payload, 'orderStatus', 'OrderStatus') || 'Completed';
+    const row = document.createElement('tr');
+    row.className = 'hover:bg-orange-50/30';
+    row.dataset.realtimeOrderRow = 'true';
+    row.dataset.orderId = orderId;
+    row.innerHTML = `
+      <td class="px-5 py-3.5 font-mono text-sm text-orange-500 font-semibold">${escapeHtml(read(payload, 'orderCode', 'OrderCode'))}</td>
+      <td class="px-5 py-3.5"><p class="font-semibold text-gray-800">${escapeHtml(read(payload, 'storeName', 'StoreName'))}</p><p class="font-mono text-xs text-gray-400">${escapeHtml(read(payload, 'storeCode', 'StoreCode'))}</p></td>
+      <td class="px-5 py-3.5 text-gray-600">${escapeHtml(read(payload, 'staffName', 'StaffName') || '-')}</td>
+      <td class="px-5 py-3.5 text-right font-bold text-gray-900">${formatNumber(read(payload, 'totalAmount', 'TotalAmount'))}</td>
+      <td class="px-5 py-3.5"><span data-realtime-order-status class="${badgeClasses(orderStatus, 'order')}">${escapeHtml(orderStatus)}</span></td>
+      <td class="px-5 py-3.5 text-gray-400 text-xs">${formatDateTime(read(payload, 'createdAt', 'CreatedAt'))}</td>`;
+    tbody.prepend(row);
+    while (tbody.querySelectorAll('tr').length > 6) tbody.lastElementChild?.remove();
+    highlight(row);
+    return true;
+  }
+
+  function prependPaymentRow(payload) {
+    const table = document.querySelector('[data-live-payments-table]');
+    const tbody = table?.querySelector('tbody');
+    if (!tbody) return false;
+    const paymentId = read(payload, 'paymentId', 'PaymentId');
+    if (!paymentId || tbody.querySelector(`[data-payment-id="${paymentId}"]`)) return false;
+    const status = read(payload, 'status', 'Status') || 'Pending';
+    const row = document.createElement('tr');
+    row.className = 'hover:bg-orange-50/30';
+    row.dataset.realtimePaymentRow = 'true';
+    row.dataset.paymentId = paymentId;
+    row.innerHTML = `
+      <td class="px-5 py-3.5 font-semibold text-gray-800">${escapeHtml(read(payload, 'tenantName', 'TenantName'))}</td>
+      <td class="px-5 py-3.5 text-gray-600">${escapeHtml(read(payload, 'planName', 'PlanName'))}</td>
+      <td class="px-5 py-3.5 text-right font-bold text-gray-900">${formatNumber(read(payload, 'amount', 'Amount'))}</td>
+      <td class="px-5 py-3.5 text-gray-600">${escapeHtml(read(payload, 'method', 'Method'))}</td>
+      <td class="px-5 py-3.5"><span data-realtime-payment-status class="${badgeClasses(status, 'payment')}">${escapeHtml(status)}</span></td>
+      <td class="px-5 py-3.5 text-xs text-gray-400">${formatDateTime(read(payload, 'occurredAt', 'OccurredAt'))}</td>
+      <td class="px-5 py-3.5 text-xs text-gray-400">${formatDateTime(read(payload, 'paidAt', 'PaidAt'))}</td>
+      <td class="px-5 py-3.5"><span class="text-xs text-gray-300">-</span></td>
+      <td class="px-5 py-3.5"><span class="text-xs text-gray-300">Reload for actions</span></td>`;
+    const empty = tbody.querySelector('td[colspan]');
+    if (empty) empty.closest('tr')?.remove();
+    tbody.prepend(row);
+    highlight(row);
+    return true;
+  }
+
   function handleInventoryChanged(payload) {
     const productName = read(payload, 'productName', 'ProductName') || 'Product';
     const changeType = read(payload, 'changeType', 'ChangeType') || 'Inventory';
@@ -246,6 +362,9 @@
     if ((page === 'inventory' && !rowUpdated) || (page === 'pos' && !cardUpdated)) {
       showReloadBanner('Inventory changed in another session. Reload to show new rows or filters.');
     }
+    if (page === 'dashboard') {
+      showReloadBanner('Inventory changed. Reload if you need exact low stock counts after this movement.');
+    }
   }
 
   function handleOrderCreated(payload) {
@@ -253,7 +372,14 @@
     const total = read(payload, 'totalAmount', 'TotalAmount');
     showToast('Order created', `${orderCode} completed for ${formatNumber(total)}.`, 'order');
     if (currentLivePage() === 'orders') {
-      showReloadBanner(`${orderCode} was created in another session. Reload to show it in the list.`);
+      if (!prependOrderRow(payload)) {
+        showReloadBanner(`${orderCode} was created in another session. Reload to show it in the list.`);
+      }
+    }
+    if (currentLivePage() === 'dashboard') {
+      incrementDashboardMetric('orders-today');
+      addDashboardCurrency('revenue-today', total);
+      prependDashboardOrder(payload);
     }
   }
 
@@ -283,6 +409,9 @@
     showToast('Order cancelled', `${orderCode} was cancelled and inventory was returned.`, 'order');
     if (currentLivePage() === 'orders' && !updated) {
       showReloadBanner(`${orderCode} was cancelled in another session. Reload to refresh the current list.`);
+    }
+    if (currentLivePage() === 'dashboard') {
+      showReloadBanner(`${orderCode} was cancelled. Reload to refresh revenue and recent order status.`);
     }
   }
 
@@ -332,7 +461,12 @@
     const amount = read(payload, 'amount', 'Amount');
     showToast('System payment updated', `${tenantName}: ${formatNumber(amount)} is ${status}.`, 'billing');
     if (['subscription', 'payments'].includes(currentLivePage())) {
-      showReloadBanner('Payment data changed in another session. Reload to refresh billing data.');
+      if (currentLivePage() !== 'payments' || !prependPaymentRow(payload)) {
+        showReloadBanner('Payment data changed in another session. Reload to refresh billing data.');
+      }
+    }
+    if (currentLivePage() === 'dashboard' && status === 'Paid') {
+      addDashboardCurrency('saas-revenue', amount);
     }
   }
 

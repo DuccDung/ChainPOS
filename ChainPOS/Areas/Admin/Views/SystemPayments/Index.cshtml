@@ -61,7 +61,7 @@
             </form>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="w-full data-table text-sm" data-live-payments-table>
                 <thead>
                     <tr class="bg-amber-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
                         <th class="px-5 py-3 text-left">Tenant</th>
@@ -84,12 +84,12 @@
                     {
                         foreach (var payment in Model.Payments)
                         {
-                            <tr class="hover:bg-orange-50/30">
+                            <tr class="hover:bg-orange-50/30" data-realtime-payment-row data-payment-id="@payment.Id">
                                 <td class="px-5 py-3.5 font-semibold text-gray-800">@payment.TenantName</td>
                                 <td class="px-5 py-3.5 text-gray-600">@payment.PlanName</td>
                                 <td class="px-5 py-3.5 text-right font-bold text-gray-900">@Money(payment.Amount)</td>
                                 <td class="px-5 py-3.5 text-gray-600">@payment.Method</td>
-                                <td class="px-5 py-3.5"><span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @StatusClass(payment.Status)">@payment.Status</span></td>
+                                <td class="px-5 py-3.5"><span data-realtime-payment-status class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @StatusClass(payment.Status)">@payment.Status</span></td>
                                 <td class="px-5 py-3.5 text-xs text-gray-400">@DateTimeText(payment.CreatedAt)</td>
                                 <td class="px-5 py-3.5 text-xs text-gray-400">@DateTimeText(payment.PaidAt)</td>
                                 <td class="px-5 py-3.5">

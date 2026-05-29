@@ -544,14 +544,14 @@ Mục tiêu: có khung UI quản trị đủ để bắt đầu làm CRUD.
 - [x] `Areas/Staff/Controllers/DashboardController`
 - [x] Admin dashboard hiển thị tổng tenant, store, owner, doanh thu SaaS.
 - [x] Owner dashboard hiển thị doanh thu hôm nay và metrics tenant cơ bản.
-- [ ] Owner dashboard bổ sung low stock và recent orders khi triển khai inventory/order.
+- [x] Owner dashboard bổ sung low stock và recent orders khi triển khai inventory/order.
 - [x] Staff dashboard hiển thị store được gán, ca hiện tại, đơn và doanh thu cá nhân hôm nay.
 
 ### 6.3. UI rules
 
 - [x] Không để staff thấy menu owner/admin.
 - [x] Không để owner thấy menu admin.
-- [ ] Table phải có search/filter/pagination.
+- [x] Table phải có search/filter/pagination.
 - [x] Form dùng ViewModel, không bind entity trực tiếp.
 - [x] Action nguy hiểm có confirm modal.
 - [x] Server-side validation là bắt buộc.
@@ -642,8 +642,8 @@ Mục tiêu: owner tạo được store và staff, staff chỉ thao tác store �
 - [x] Owner chỉ thấy store và staff của tenant mình.
 - [x] Owner tạo được staff.
 - [x] Staff mới đăng nhập được sau khi có password hợp lệ.
-- [ ] Staff không thấy store chưa được gán.
-- [ ] Staff bị tắt `UserStores.IsActive` không thao tác được store đó.
+- [x] Staff không thấy store chưa được gán.
+- [x] Staff bị tắt `UserStores.IsActive` không thao tác được store đó.
 
 ## 9. Phase 5: Product, category, store product
 
@@ -842,7 +842,7 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 - [x] Inventory status report dùng `VwInventoryStatusReports`.
 - [x] System revenue report dùng `VwSystemRevenueReports`.
 - [x] Filter theo thời gian, tenant, store.
-- [ ] Export Excel nếu cần.
+- [x] Export Excel nếu cần.
 
 ### 12.2. Subscription
 
@@ -901,8 +901,8 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 - [x] Client nhận live toast, notification badge và notification dropdown.
 - [x] POS/Inventory cập nhật stock live cho item đang hiển thị.
 - [x] Orders/Shifts/Subscription/Payments hiển thị reload banner khi dữ liệu thay đổi.
-- [ ] Tự động prepend order/payment mới vào table mà không cần reload.
-- [ ] Live update dashboard metrics.
+- [x] Tự động prepend order/payment mới vào table mà không cần reload.
+- [x] Live update dashboard metrics.
 
 ## 13. Security checklist
 
@@ -929,13 +929,13 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 - [x] Staff truy cập `/owner/storeproducts` bị access denied.
 - [x] Owner truy cập `/admin/owners` bị access denied.
 - [x] Staff đổi store id sang store chưa được gán bị chặn.
-- [ ] Owner không xem được tenant khác.
-- [ ] Tenant suspended không thao tác được module nghiệp vụ.
+- [x] Owner không xem được tenant khác.
+- [x] Tenant suspended không thao tác được module nghiệp vụ.
 
 ### 14.2. Manual test nghiệp vụ
 
-- [ ] Admin tạo owner.
-- [ ] Owner có tenant riêng.
+- [x] Admin tạo owner.
+- [x] Owner có tenant riêng.
 - [x] Owner tạo store.
 - [x] Owner tạo staff.
 - [x] Owner gán staff vào store.
@@ -963,8 +963,8 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 ### 14.3. Unit/integration test nên thêm sau MVP UI
 
 - [x] Test `StoreAccessService`.
-- [ ] Test tạo owner.
-- [ ] Test tạo staff.
+- [x] Test tạo owner.
+- [x] Test tạo staff.
 - [x] Test import stock.
 - [x] Test export stock.
 - [x] Test adjust stock.

@@ -41,10 +41,10 @@ public sealed class DashboardService : IDashboardService
             SecondaryActionUrl = "/admin/tenants",
             Metrics = new[]
             {
-                Metric("Total Owners", ownerCount.ToString("N0"), "+ active", "Owner accounts", "orange", "users"),
-                Metric("Total Tenants", tenantCount.ToString("N0"), "live", "Active platform tenants", "amber", "building"),
-                Metric("Total Stores", storeCount.ToString("N0"), "stores", "Stores across tenants", "yellow", "box"),
-                Metric("SaaS Revenue", FormatCurrency(revenue), "paid", "Collected system payments", "emerald", "trend")
+                Metric("total-owners", "Total Owners", ownerCount.ToString("N0"), "+ active", "Owner accounts", "orange", "users"),
+                Metric("total-tenants", "Total Tenants", tenantCount.ToString("N0"), "live", "Active platform tenants", "amber", "building"),
+                Metric("total-stores", "Total Stores", storeCount.ToString("N0"), "stores", "Stores across tenants", "yellow", "box"),
+                Metric("saas-revenue", "SaaS Revenue", FormatCurrency(revenue), "paid", "Collected system payments", "emerald", "trend")
             },
             Activities = new[]
             {
@@ -72,6 +72,30 @@ public sealed class DashboardService : IDashboardService
         var todayRevenue = await _db.Orders
             .Where(x => x.TenantId == tenantId && x.CreatedAt >= today && x.OrderStatus != OrderStatuses.Cancelled)
             .SumAsync(x => (decimal?)x.TotalAmount, cancellationToken) ?? 0;
+        var todayOrderCount = await _db.Orders.CountAsync(
+            x => x.TenantId == tenantId && x.CreatedAt >= today && x.OrderStatus != OrderStatuses.Cancelled,
+            cancellationToken);
+        var lowStockCount = await _db.Inventories.CountAsync(
+            x => x.TenantId == tenantId && x.Quantity > 0 && x.Quantity <= x.MinQuantity,
+            cancellationToken);
+        var recentOrders = await _db.Orders
+            .AsNoTracking()
+            .Where(x => x.TenantId == tenantId)
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(6)
+            .Select(x => new DashboardRecentOrderViewModel
+            {
+                Id = x.Id,
+                OrderCode = x.OrderCode,
+                StoreName = x.Store.Name,
+                StoreCode = x.Store.Code,
+                StaffName = x.StaffUser != null ? x.StaffUser.FullName : null,
+                TotalAmount = x.TotalAmount,
+                OrderStatus = x.OrderStatus,
+                PaymentStatus = x.PaymentStatus,
+                CreatedAt = x.CreatedAt
+            })
+            .ToListAsync(cancellationToken);
 
         return new DashboardViewModel
         {
@@ -86,17 +110,18 @@ public sealed class DashboardService : IDashboardService
             SecondaryActionUrl = "/owner/staff",
             Metrics = new[]
             {
-                Metric("Stores", storeCount.ToString("N0"), "active", "Stores in your tenant", "orange", "building"),
-                Metric("Staff", staffCount.ToString("N0"), "team", "Staff accounts", "amber", "users"),
-                Metric("Products", productCount.ToString("N0"), "items", "Product catalog", "yellow", "box"),
-                Metric("Revenue Today", FormatCurrency(todayRevenue), "today", "Completed sales", "emerald", "trend")
+                Metric("stores", "Stores", storeCount.ToString("N0"), "active", "Stores in your tenant", "orange", "building"),
+                Metric("orders-today", "Orders Today", todayOrderCount.ToString("N0"), "today", "Completed orders", "amber", "order"),
+                Metric("low-stock", "Low Stock", lowStockCount.ToString("N0"), "watch", "Items at or below minimum", "yellow", "box"),
+                Metric("revenue-today", "Revenue Today", FormatCurrency(todayRevenue), "today", "Completed sales", "emerald", "trend")
             },
             Activities = new[]
             {
-                Activity("Store access protected", "Owner data is scoped by tenant.", "Now", "orange"),
-                Activity("Staff assignment active", "Staff access will use UserStores.", "Now", "amber"),
-                Activity("Inventory and POS next", "Product, inventory and POS modules are next in roadmap.", "Next", "emerald")
-            }
+                Activity("Low stock watchlist", $"{lowStockCount:N0} inventory item(s) need attention.", "Live", lowStockCount > 0 ? "amber" : "emerald"),
+                Activity("Recent orders loaded", $"{recentOrders.Count:N0} latest order(s) are available below.", "Now", "orange"),
+                Activity("Tenant isolation active", "Owner data is scoped by tenant for store, stock and sales.", "Now", "emerald")
+            },
+            RecentOrders = recentOrders
         };
     }
 
@@ -139,10 +164,10 @@ public sealed class DashboardService : IDashboardService
             SecondaryActionUrl = "/staff/inventory",
             Metrics = new[]
             {
-                Metric("Assigned Stores", storeCount.ToString("N0"), "stores", "Active store assignments", "orange", "building"),
-                Metric("Open Shifts", openShiftCount.ToString("N0"), "current", "Your open shifts", "amber", "clock"),
-                Metric("Orders Today", orderCount.ToString("N0"), "today", "Orders created by you", "yellow", "order"),
-                Metric("Sales Today", FormatCurrency(todayRevenue), "today", "Your sales total", "emerald", "trend")
+                Metric("assigned-stores", "Assigned Stores", storeCount.ToString("N0"), "stores", "Active store assignments", "orange", "building"),
+                Metric("open-shifts", "Open Shifts", openShiftCount.ToString("N0"), "current", "Your open shifts", "amber", "clock"),
+                Metric("orders-today", "Orders Today", orderCount.ToString("N0"), "today", "Orders created by you", "yellow", "order"),
+                Metric("revenue-today", "Sales Today", FormatCurrency(todayRevenue), "today", "Your sales total", "emerald", "trend")
             },
             Activities = new[]
             {
@@ -165,6 +190,7 @@ public sealed class DashboardService : IDashboardService
     };
 
     private static DashboardMetricViewModel Metric(
+        string key,
         string label,
         string value,
         string badge,
@@ -173,6 +199,7 @@ public sealed class DashboardService : IDashboardService
         string icon)
         => new()
         {
+            Key = key,
             Label = label,
             Value = value,
             Badge = badge,

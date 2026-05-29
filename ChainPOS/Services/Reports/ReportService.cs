@@ -3,6 +3,8 @@ using ChainPOS.Services.Common;
 using ChainPOS.Services.Security;
 using ChainPOS.ViewModels.Reports;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
+using System.Text;
 
 namespace ChainPOS.Services.Reports;
 
@@ -63,6 +65,117 @@ public sealed class ReportService : IReportService
             SystemRevenue = systemRevenue
         };
     }
+
+    public async Task<(byte[] Content, string FileName, string ContentType)> ExportReportsAsync(
+        string areaName,
+        ReportsFilterViewModel? filter,
+        CancellationToken cancellationToken = default)
+    {
+        var model = await GetReportsAsync(areaName, filter, cancellationToken);
+        var workbook = new StringBuilder();
+        workbook.AppendLine("<?xml version=\"1.0\"?>");
+        workbook.AppendLine("<?mso-application progid=\"Excel.Sheet\"?>");
+        workbook.AppendLine("<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\" xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\">");
+
+        AppendWorksheet(
+            workbook,
+            "Daily Sales",
+            new[] { "Date", "Tenant", "Store", "Store Code", "Orders", "Subtotal", "Discount", "Tax", "Total" },
+            model.DailySales.Select(x => new[]
+            {
+                x.ReportDate?.ToString("yyyy-MM-dd") ?? string.Empty,
+                x.TenantName,
+                x.StoreName,
+                x.StoreCode,
+                x.OrderCount.ToString(),
+                x.SubTotal.ToString("0.##"),
+                x.DiscountAmount.ToString("0.##"),
+                x.TaxAmount.ToString("0.##"),
+                x.TotalAmount.ToString("0.##")
+            }));
+
+        AppendWorksheet(
+            workbook,
+            "Staff Sales",
+            new[] { "Date", "Tenant", "Store", "Store Code", "Staff", "Orders", "Sales" },
+            model.StaffSales.Select(x => new[]
+            {
+                x.ReportDate?.ToString("yyyy-MM-dd") ?? string.Empty,
+                x.TenantName,
+                x.StoreName,
+                x.StoreCode,
+                x.StaffName,
+                x.OrderCount.ToString(),
+                x.TotalSales.ToString("0.##")
+            }));
+
+        AppendWorksheet(
+            workbook,
+            "Inventory",
+            new[] { "Tenant", "Store", "Store Code", "Product", "SKU", "Barcode", "Quantity", "Min Quantity", "Low Stock", "Updated At" },
+            model.InventoryStatus.Select(x => new[]
+            {
+                x.TenantName,
+                x.StoreName,
+                x.StoreCode,
+                x.ProductName,
+                x.Sku ?? string.Empty,
+                x.Barcode ?? string.Empty,
+                x.Quantity.ToString("0.###"),
+                x.MinQuantity.ToString("0.###"),
+                x.IsLowStock ? "Yes" : "No",
+                x.UpdatedAt.ToString("yyyy-MM-dd HH:mm:ss")
+            }));
+
+        if (model.IsAdmin)
+        {
+            AppendWorksheet(
+                workbook,
+                "System Revenue",
+                new[] { "Paid Date", "Tenant", "Payments", "Amount" },
+                model.SystemRevenue.Select(x => new[]
+                {
+                    x.PaidDate?.ToString("yyyy-MM-dd") ?? string.Empty,
+                    x.TenantName,
+                    x.PaymentCount.ToString(),
+                    x.TotalAmount.ToString("0.##")
+                }));
+        }
+
+        workbook.AppendLine("</Workbook>");
+        var fileName = $"chainpos-reports-{DateTime.UtcNow:yyyyMMddHHmmss}.xls";
+        return (Encoding.UTF8.GetBytes(workbook.ToString()), fileName, "application/vnd.ms-excel");
+    }
+
+    private static void AppendWorksheet(StringBuilder workbook, string name, IReadOnlyList<string> headers, IEnumerable<IReadOnlyList<string>> rows)
+    {
+        workbook.Append("<Worksheet ss:Name=\"").Append(Xml(name)).AppendLine("\"><Table>");
+        workbook.AppendLine("<Row>");
+        foreach (var header in headers)
+        {
+            AppendCell(workbook, header);
+        }
+        workbook.AppendLine("</Row>");
+
+        foreach (var row in rows)
+        {
+            workbook.AppendLine("<Row>");
+            foreach (var value in row)
+            {
+                AppendCell(workbook, value);
+            }
+            workbook.AppendLine("</Row>");
+        }
+
+        workbook.AppendLine("</Table></Worksheet>");
+    }
+
+    private static void AppendCell(StringBuilder workbook, string? value)
+        => workbook.Append("<Cell><Data ss:Type=\"String\">")
+            .Append(Xml(value ?? string.Empty))
+            .AppendLine("</Data></Cell>");
+
+    private static string Xml(string value) => WebUtility.HtmlEncode(value);
 
     private ReportsFilterViewModel NormalizeFilter(bool isAdmin, ReportsFilterViewModel? filter)
     {
