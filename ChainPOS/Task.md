@@ -6,21 +6,23 @@ Tài liệu này là backlog triển khai tiếp theo cho dự án `ChainPOS` sa
 
 ## 0. AI handoff context hiện tại
 
-Đọc phần này trước khi làm tiếp. Dự án hiện đang ở trạng thái **đã hoàn thành Phase 7: Shift và POS ở mức MVP server-rendered MVC**. Không cần làm lại các phần từ Phase 1 đến Phase 7, trừ khi phát hiện bug khi test hoặc khi hardening.
+Đọc phần này trước khi làm tiếp. Dự án hiện đang ở trạng thái **đã hoàn thành Phase 8.3 Audit log viewer, Phase 8.2 Subscription UI và Admin billing MVP**. Không cần làm lại các phần từ Phase 1 đến Phase 8, trừ khi phát hiện bug khi test hoặc khi hardening.
 
 ### 0.1. Trạng thái mới nhất
 
 - [x] Phase 1: Authentication/login 3 role `ADMIN`, `OWNER`, `STAFF`.
 - [x] Phase 2: Layout/dashboard theo role, sidebar/topbar/alert/confirm modal.
-- [x] Phase 3 một phần: Admin quản lý Owner và Tenant.
+- [x] Phase 3: Admin quản lý Owner, Tenant, Subscription Plan và System Payment MVP.
 - [x] Phase 4: Owner quản lý Store, Staff và gán Staff vào Store.
 - [x] Phase 5: Category, Product, Store Product.
 - [x] Phase 6: Inventory import/export/adjust cho Owner/Staff.
 - [x] Phase 7: Shift, POS checkout, Orders, receipt, cancel order.
 - [x] Phase 8.1: Reports dùng các report views.
-- [ ] Chưa có unit/integration test tự động.
-- [ ] Phase 8.2 Subscription UI và Phase 8.3 Audit viewer chưa làm.
-- [ ] Admin Subscription Plan/System Payment ở Phase 3.3 và 3.4 chưa làm.
+- [x] Phase 8.3: Audit log viewer cho Admin/Owner.
+- [x] Có unit/integration test tự động bước đầu cho store access, inventory, POS, cancel order và close shift.
+- [x] Phase 8.2 Subscription UI đã làm.
+- [x] Admin Subscription Plan/System Payment ở Phase 3.3 và 3.4 đã làm MVP.
+- [x] Có tài liệu nghiệp vụ và hướng dẫn test trực quan tại `BUSINESS_WORKFLOW_TEST_GUIDE.md`.
 
 ### 0.2. Tài khoản demo
 
@@ -37,6 +39,12 @@ Dữ liệu demo Phase 7 đã được bổ sung trong `DevelopmentDataSeeder` �
 - 6 payment demo với các phương thức `Cash`, `Card`, `BankTransfer`, `Momo`.
 - Inventory transaction demo cho `Sale` và `Return`, có top-up tự động nếu tồn kho local không đủ để seed đơn.
 - Audit log demo cho `OpenShift`, `CloseShift`, `CreateOrder`, `CancelOrder`.
+
+Dữ liệu demo Subscription/Admin billing đã được bổ sung:
+
+- Plan demo và tenant subscription active cho các tenant demo.
+- System payment demo có trạng thái `Paid`, `Pending`, `Failed`, kèm invoice URL mẫu.
+- Audit log demo cho login/logout và các thao tác subscription/payment.
 
 ### 0.3. Rule bắt buộc khi AI làm tiếp
 
@@ -62,6 +70,13 @@ Dữ liệu demo Phase 7 đã được bổ sung trong `DevelopmentDataSeeder` �
 - Audit:
   - `Services/Audit/IAuditLogService.cs`
   - `Services/Audit/AuditLogService.cs`
+- Subscription/Admin billing:
+  - `Services/Subscriptions/ISubscriptionManagementService.cs`
+  - `Services/Subscriptions/SubscriptionManagementService.cs`
+  - `Areas/Admin/Controllers/SubscriptionPlansController.cs`
+  - `Areas/Admin/Controllers/SystemPaymentsController.cs`
+  - `Areas/Admin/Controllers/SubscriptionsController.cs`
+  - `Areas/Owner/Controllers/SubscriptionController.cs`
 - Owner management:
   - `Services/Owner`
   - `Areas/Owner/Controllers`
@@ -146,21 +161,46 @@ Sau khi bổ sung dữ liệu demo Phase 7 đã chạy:
 - Chạy app Development để seeder ghi dữ liệu vào database local.
 - Query database xác nhận có 4 shift demo, 6 order `POS-DEMO-*`, 6 payment demo, 9 transaction `Sale` và 1 transaction `Return`.
 
+Sau Phase 8.3 Audit log viewer đã chạy:
+
+- `dotnet build .\ChainPOS.sln` thành công, 0 warning, 0 error.
+- Chạy app Development tại `http://localhost:5292` để seeder ghi audit demo vào database local.
+- HTTP smoke test:
+  - Admin đăng nhập được và truy cập `/admin/auditlogs` trả 200.
+  - Owner đăng nhập được và truy cập `/owner/auditlogs` trả 200.
+  - Owner filter audit theo `Action=ImportStock` trả 200 và hiển thị log tương ứng.
+- Query database xác nhận có audit `Login` cho Admin/Owner và các audit demo phục vụ màn audit viewer.
+
+Sau Subscription/Admin billing + test hardening đã chạy:
+
+- `dotnet build .\ChainPOS.sln` thành công, 0 warning, 0 error.
+- `dotnet test .\ChainPOS.sln` thành công, 12 passed, 0 failed.
+- Test tự động hiện có cho `StoreAccessService`, import/export/adjust stock, checkout yêu cầu ca mở, checkout tạo order/trừ kho, cancel order hoàn kho và close shift tính `ExpectedCash`/`DifferenceAmount`.
+- Connection string máy cá nhân đã chuyển khỏi `appsettings.json`; Development đọc thêm `appsettings.Local.json` bị `.gitignore` chặn.
+- Chạy app Development tại `http://localhost:5292` để seeder ghi dữ liệu demo billing vào database local.
+- HTTP smoke test:
+  - Admin đăng nhập được và truy cập `/admin/subscriptionplans` trả 200.
+  - Admin truy cập `/admin/systempayments` trả 200.
+  - Admin truy cập `/admin/subscriptions/create` trả 200.
+  - Owner truy cập `/owner/subscription` trả 200.
+- Query database xác nhận `SystemPayments` demo có `Paid`, `Pending`, `Failed`.
+
 Lưu ý: smoke test có thể để lại dữ liệu ca/order đã đóng/cancel trong database local. Đây là dữ liệu test hợp lệ, không tự ý xóa nếu người dùng không yêu cầu.
 
 ### 0.7. Việc nên làm tiếp theo
 
-Ưu tiên tiếp theo là **Phase 8.3 Audit log viewer**. Phase 8.1 Reports đã có màn Admin/Owner dùng các report view.
+Phase 8.3 Audit log viewer đã có màn Admin/Owner dùng dữ liệu `AuditLogs`.
 
-1. Admin xem toàn bộ audit log.
-2. Owner chỉ xem audit log trong tenant của mình.
-3. Filter audit theo user, store, action, thời gian.
+1. [x] Admin xem toàn bộ audit log.
+2. [x] Owner chỉ xem audit log trong tenant của mình.
+3. [x] Filter audit theo user, store, action, thời gian.
 
-Sau Audit log viewer, làm tiếp:
+Ưu tiên tiếp theo:
 
-1. Phase 7 hardening: thêm unit/integration test cho shift, checkout, cancel order.
-2. Subscription UI và lịch sử thanh toán SaaS.
-3. Admin Subscription Plan/System Payment còn thiếu.
+1. Bổ sung test cho tạo owner/staff và các luồng admin billing chi tiết.
+2. Export Excel cho report nếu cần.
+3. Bổ sung low stock/recent orders vào Owner dashboard.
+4. Rà soát security checklist còn lại bằng manual test.
 
 ### 0.8. Mẫu UI nên dùng khi làm tiếp
 
@@ -209,7 +249,7 @@ Sau Audit log viewer, làm tiếp:
 - [x] Đã có ViewModel/InputModel cho login, dashboard, Admin Owners và Admin Tenants.
 - [x] Đã có `RequireTenantFilter` và `IStoreAccessService` kiểm tra tenant/store access cơ bản.
 - [x] Đã có layout/dashboard theo role và UI Admin Owners/Tenants cơ bản.
-- [ ] Chưa có test.
+- [x] Đã có test tự động bước đầu trong `ChainPOS.Tests`.
 
 ## 2. Model đã scaffold từ SQL Server
 
@@ -356,10 +396,10 @@ Quy ước hiện tại cho backlog: ưu tiên Cookie Authentication để giữ
 
 ### 4.2. Connection string và secrets
 
-- [ ] Không commit connection string máy cá nhân vào production config.
-- [ ] Chuyển connection string local sang User Secrets hoặc `appsettings.Local.json`.
-- [ ] Giữ `appsettings.json` chỉ chứa cấu hình an toàn hoặc placeholder.
-- [ ] Thêm hướng dẫn cấu hình connection string trong README nếu cần.
+- [x] Không commit connection string máy cá nhân vào production config.
+- [x] Chuyển connection string local sang User Secrets hoặc `appsettings.Local.json`.
+- [x] Giữ `appsettings.json` chỉ chứa cấu hình an toàn hoặc placeholder.
+- [x] Thêm hướng dẫn cấu hình connection string trong README nếu cần.
 
 ### 4.3. Constants thay cho magic string
 
@@ -377,6 +417,8 @@ Cần tạo constants để không rải string trong controller/service:
 - [x] `OrderStatuses.New`, `Completed`, `Cancelled`
 - [x] `OrderPaymentStatuses.Unpaid`, `Partial`, `Paid`, `Refunded`, `Cancelled`
 - [x] `ShiftStatuses.Open`, `Closed`
+- [x] `BillingCycles.Monthly`, `Quarterly`, `Yearly`
+- [x] `SubscriptionStatuses.Active`, `Trial`, `Suspended`, `Cancelled`, `Expired`
 
 ## 5. Phase 1: Nền tảng authentication và phân quyền
 
@@ -532,21 +574,21 @@ Mục tiêu: admin quản lý owner, tenant, subscription plan và audit log.
 
 ### 7.3. Subscription plan
 
-- [ ] Tạo `Areas/Admin/Controllers/SubscriptionPlansController`.
-- [ ] CRUD plan.
-- [ ] Validate `Price >= 0`.
-- [ ] Validate `MaxStores`, `MaxStaff`, `MaxProducts`.
-- [ ] Không xóa vật lý plan đã có tenant dùng.
-- [ ] Ghi audit log.
+- [x] Tạo `Areas/Admin/Controllers/SubscriptionPlansController`.
+- [x] CRUD plan.
+- [x] Validate `Price >= 0`.
+- [x] Validate `MaxStores`, `MaxStaff`, `MaxProducts`.
+- [x] Không xóa vật lý plan đã có tenant dùng.
+- [x] Ghi audit log.
 
 ### 7.4. System payment
 
-- [ ] Tạo `Areas/Admin/Controllers/SystemPaymentsController`.
-- [ ] Danh sách payment SaaS.
-- [ ] Mark as paid.
-- [ ] Mark as failed.
-- [ ] Gắn `PaidAt`.
-- [ ] Link invoice nếu có.
+- [x] Tạo `Areas/Admin/Controllers/SystemPaymentsController`.
+- [x] Danh sách payment SaaS.
+- [x] Mark as paid.
+- [x] Mark as failed.
+- [x] Gắn `PaidAt`.
+- [x] Link invoice nếu có.
 
 ## 8. Phase 4: Owner quản lý tenant, store, staff
 
@@ -623,8 +665,8 @@ Mục tiêu: owner quản lý danh mục, sản phẩm và bật/tắt sản ph�
 - [x] Tạo UI gán product vào store.
 - [x] Set `IsAvailable`.
 - [x] Set `SellingPrice` riêng theo store nếu có.
-- [ ] Khi bán POS, ưu tiên `StoreProducts.SellingPrice`, fallback `Products.Price`.
-  - [x] Đã chuẩn bị helper `GetEffectiveSellingPriceAsync`; chờ tích hợp khi làm POS.
+- [x] Khi bán POS, ưu tiên `StoreProducts.SellingPrice`, fallback `Products.Price`.
+  - [x] POS đã tích hợp logic `StoreProducts.SellingPrice ?? Products.Price`.
 
 ## 10. Phase 6: Inventory
 
@@ -789,17 +831,17 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 
 ### 12.2. Subscription
 
-- [ ] Owner xem subscription hiện tại.
-- [ ] Owner xem lịch sử thanh toán SaaS.
-- [ ] Admin gán plan cho tenant.
-- [ ] Admin tạo subscription mới.
-- [ ] Kiểm tra giới hạn plan khi tạo store/staff/product.
-- [ ] Chặn hoặc cảnh báo tenant hết hạn.
+- [x] Owner xem subscription hiện tại.
+- [x] Owner xem lịch sử thanh toán SaaS.
+- [x] Admin gán plan cho tenant.
+- [x] Admin tạo subscription mới.
+- [x] Kiểm tra giới hạn plan khi tạo store/staff/product.
+- [x] Chặn hoặc cảnh báo tenant hết hạn.
 
 ### 12.3. Audit log
 
 - [x] Tạo `IAuditLogService`.
-- [ ] Ghi log các action quan trọng:
+- [x] Ghi log các action quan trọng:
   - `Login`
   - `Logout`
   - `CreateUser`
@@ -826,23 +868,25 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 - [x] Ghi audit log cho `AssignStoreProduct`, `UpdateStoreProduct`, `EnableStoreProduct`, `DisableStoreProduct`.
 - [x] Ghi audit log cho `ImportStock`, `ExportStock`, `AdjustStock`.
 - [x] Ghi audit log cho `OpenShift`, `CloseShift`, `CreateOrder`, `CancelOrder`.
-- [ ] Admin xem toàn bộ audit log.
-- [ ] Owner chỉ xem audit log trong tenant của mình.
-- [ ] Filter audit theo user, store, action, thời gian.
+- [x] Ghi audit log cho `Login`, `Logout`.
+- [x] Ghi audit log cho `ChangeSubscription` sau khi triển khai Subscription UI.
+- [x] Admin xem toàn bộ audit log.
+- [x] Owner chỉ xem audit log trong tenant của mình.
+- [x] Filter audit theo user, store, action, thời gian.
 
 ## 13. Security checklist
 
-- [ ] Bật HTTPS.
-- [ ] Bật antiforgery token cho form POST.
-- [ ] Không bind entity trực tiếp từ request.
-- [ ] Validate server-side đầy đủ.
-- [ ] Không log password hoặc `PasswordHash`.
-- [ ] Không cho upload file ngoài định dạng ảnh.
-- [ ] Giới hạn dung lượng upload.
-- [ ] Chặn path traversal khi upload.
-- [ ] Mọi query owner/staff lọc theo `TenantId`.
-- [ ] Mọi thao tác staff theo store kiểm tra `UserStores`.
-- [ ] Action POST phải kiểm tra quyền lại ở server, không chỉ ẩn nút trên UI.
+- [x] Bật HTTPS.
+- [x] Bật antiforgery token cho form POST.
+- [x] Không bind entity trực tiếp từ request.
+- [x] Validate server-side đầy đủ.
+- [x] Không log password hoặc `PasswordHash`.
+- [x] Không cho upload file ngoài định dạng ảnh.
+- [x] Giới hạn dung lượng upload.
+- [x] Chặn path traversal khi upload.
+- [x] Mọi query owner/staff lọc theo `TenantId`.
+- [x] Mọi thao tác staff theo store kiểm tra `UserStores`.
+- [x] Action POST phải kiểm tra quyền lại ở server, không chỉ ẩn nút trên UI.
 
 ## 14. Test checklist
 
@@ -883,27 +927,29 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 - [x] Payment cập nhật trạng thái order đúng.
 - [x] Admin xem Reports gồm daily sales, staff sales, inventory status và system revenue.
 - [x] Owner xem Reports trong tenant của mình và không thấy System Revenue Report.
+- [x] Admin xem Audit Logs và filter audit theo action.
+- [x] Owner xem Audit Logs trong tenant của mình và filter audit theo action.
 
 ### 14.3. Unit/integration test nên thêm sau MVP UI
 
-- [ ] Test `StoreAccessService`.
+- [x] Test `StoreAccessService`.
 - [ ] Test tạo owner.
 - [ ] Test tạo staff.
-- [ ] Test import stock.
-- [ ] Test export stock.
-- [ ] Test adjust stock.
-- [ ] Test create order.
-- [ ] Test cancel order.
-- [ ] Test close shift.
+- [x] Test import stock.
+- [x] Test export stock.
+- [x] Test adjust stock.
+- [x] Test create order.
+- [x] Test cancel order.
+- [x] Test close shift.
 
 ## 15. Ưu tiên triển khai gần nhất
 
-Thứ tự nên làm tiếp sau Phase 8.1 Reports:
+Thứ tự nên làm tiếp sau Subscription/Admin billing MVP:
 
-1. Phase 8.3: Audit log viewer cho Admin/Owner.
-2. Phase 7 hardening: thêm unit/integration test cho shift, checkout, cancel order.
-3. Phase 8.2: Subscription UI và lịch sử thanh toán SaaS.
-4. Admin subscription plan/system payment còn thiếu ở Phase 3.3 và 3.4.
+1. Bổ sung test cho tạo owner/staff và các luồng admin billing chi tiết.
+2. Export Excel cho report nếu cần.
+3. Bổ sung low stock/recent orders vào Owner dashboard.
+4. Manual smoke test sâu hơn cho tenant expired/suspended và owner không xem tenant khác.
 
 ## 16. Definition of Done cho mỗi chức năng
 

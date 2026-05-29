@@ -62,7 +62,8 @@ public static class DevelopmentDataSeeder
             "hello@techzone.local",
             cancellationToken);
         await EnsureOwnerTenantAsync(db, demoOwner, demoTenant, cancellationToken);
-        await EnsureTenantSubscriptionAsync(db, demoTenant, plan, cancellationToken);
+        var demoSubscription = await EnsureTenantSubscriptionAsync(db, demoTenant, plan, cancellationToken);
+        await EnsureDemoSystemPaymentsAsync(db, demoTenant, demoSubscription, cancellationToken);
 
         var stores = await EnsureDemoStoresAsync(db, demoTenant, demoOwner, cancellationToken);
         var staff = await EnsureDemoStaffAsync(db, passwordHasher, demoTenant, demoOwner, stores, cancellationToken);
@@ -74,6 +75,7 @@ public static class DevelopmentDataSeeder
 
         await EnsureExtraOwnerTenantsAsync(db, passwordHasher, plan, admin, cancellationToken);
         await EnsureSeedAuditLogsAsync(db, admin, demoOwner, demoTenant, stores, staff, categories, products, storeProducts, cancellationToken);
+        await EnsureAuditViewerDemoLogsAsync(db, admin, demoOwner, demoTenant, stores, staff, products, storeProducts, cancellationToken);
     }
 
     private static async Task<AspNetUser> EnsureUserAsync(
@@ -314,7 +316,7 @@ public static class DevelopmentDataSeeder
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    private static async Task EnsureTenantSubscriptionAsync(
+    private static async Task<TenantSubscription> EnsureTenantSubscriptionAsync(
         StoreFlowDbContext db,
         Tenant tenant,
         SubscriptionPlan plan,
@@ -326,7 +328,7 @@ public static class DevelopmentDataSeeder
 
         if (subscription is null)
         {
-            db.TenantSubscriptions.Add(new TenantSubscription
+            subscription = new TenantSubscription
             {
                 Id = Guid.NewGuid(),
                 TenantId = tenant.Id,
@@ -337,7 +339,8 @@ public static class DevelopmentDataSeeder
                 AutoRenew = true,
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = "seed"
-            });
+            };
+            db.TenantSubscriptions.Add(subscription);
         }
         else
         {
@@ -345,6 +348,50 @@ public static class DevelopmentDataSeeder
             subscription.AutoRenew = true;
             subscription.UpdatedAt = DateTime.UtcNow;
             subscription.UpdatedBy = "seed";
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return subscription;
+    }
+
+    private static async Task EnsureDemoSystemPaymentsAsync(
+        StoreFlowDbContext db,
+        Tenant tenant,
+        TenantSubscription subscription,
+        CancellationToken cancellationToken)
+    {
+        var seeds = new[]
+        {
+            new SystemPaymentSeed(1990000m, PaymentMethods.BankTransfer, PaymentStatuses.Paid, new DateTime(2026, 3, 1, 4, 30, 0, DateTimeKind.Utc), "/invoices/system/techzone-2026-03.pdf", new DateTime(2026, 3, 1, 4, 0, 0, DateTimeKind.Utc)),
+            new SystemPaymentSeed(1990000m, PaymentMethods.Card, PaymentStatuses.Paid, new DateTime(2026, 4, 1, 4, 45, 0, DateTimeKind.Utc), "/invoices/system/techzone-2026-04.pdf", new DateTime(2026, 4, 1, 4, 0, 0, DateTimeKind.Utc)),
+            new SystemPaymentSeed(1990000m, PaymentMethods.BankTransfer, PaymentStatuses.Pending, null, "/invoices/system/techzone-2026-05.pdf", DateTime.UtcNow.AddDays(-2)),
+            new SystemPaymentSeed(1990000m, PaymentMethods.Momo, PaymentStatuses.Failed, null, "/invoices/system/techzone-2026-05-retry.pdf", DateTime.UtcNow.AddDays(-1))
+        };
+
+        foreach (var seed in seeds)
+        {
+            var exists = await db.SystemPayments.AnyAsync(
+                x => x.TenantId == tenant.Id
+                    && x.SubscriptionId == subscription.Id
+                    && x.InvoiceUrl == seed.InvoiceUrl,
+                cancellationToken);
+            if (exists)
+            {
+                continue;
+            }
+
+            db.SystemPayments.Add(new SystemPayment
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenant.Id,
+                SubscriptionId = subscription.Id,
+                Amount = seed.Amount,
+                Method = seed.Method,
+                Status = seed.Status,
+                PaidAt = seed.PaidAt,
+                InvoiceUrl = seed.InvoiceUrl,
+                CreatedAt = seed.CreatedAt
+            });
         }
 
         await db.SaveChangesAsync(cancellationToken);
@@ -1474,6 +1521,76 @@ public static class DevelopmentDataSeeder
         }
     }
 
+    private static async Task EnsureAuditViewerDemoLogsAsync(
+        StoreFlowDbContext db,
+        AspNetUser admin,
+        AspNetUser owner,
+        Tenant tenant,
+        IReadOnlyDictionary<string, Store> stores,
+        IReadOnlyDictionary<string, AspNetUser> staff,
+        IReadOnlyDictionary<string, Product> products,
+        IReadOnlyDictionary<string, StoreProduct> storeProducts,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var primaryStore = stores.TryGetValue(DemoStoreCode, out var hcm01)
+            ? hcm01
+            : stores.Values.First();
+        var secondaryStore = stores.TryGetValue("TZ-HCM-02", out var hcm02)
+            ? hcm02
+            : primaryStore;
+        var primaryStaff = staff.TryGetValue(DefaultStaffEmail, out var staff01)
+            ? staff01
+            : staff.Values.First();
+        var secondaryStaff = staff.TryGetValue("staff02@demo.local", out var staff02)
+            ? staff02
+            : primaryStaff;
+        var macbook = products.TryGetValue("MBP14-M3P-18-512", out var mbp)
+            ? mbp
+            : products.Values.First();
+        var mouse = products.TryGetValue("LOGI-MX3S-GR", out var mxMouse)
+            ? mxMouse
+            : macbook;
+        var storeProduct = storeProducts.TryGetValue($"{DemoStoreCode}:LOGI-MX3S-GR", out var hcmMouse)
+            ? hcmMouse
+            : storeProducts.Values.First();
+
+        var logs = new[]
+        {
+            new AuditDemoLog("Login", nameof(AspNetUser), admin.Id, admin.Id, null, null, null, "Email=admin@chainpos.local; Role=ADMIN", -35),
+            new AuditDemoLog("Login", nameof(AspNetUser), owner.Id, owner.Id, tenant.Id, null, null, "Email=owner@demo.local; Role=OWNER", -32),
+            new AuditDemoLog("CreateStore", nameof(Store), primaryStore.Id.ToString(), owner.Id, tenant.Id, primaryStore.Id, null, $"Store={primaryStore.Name}; Code={primaryStore.Code}", -29),
+            new AuditDemoLog("UpdateProduct", nameof(Product), macbook.Id.ToString(), owner.Id, tenant.Id, null, "Price=52990000", $"Product={macbook.Name}; SKU={macbook.Sku}; Price=52490000", -26),
+            new AuditDemoLog("AssignStoreProduct", nameof(StoreProduct), storeProduct.Id.ToString(), owner.Id, tenant.Id, primaryStore.Id, null, $"Store={primaryStore.Code}; ProductId={storeProduct.ProductId}; Available={storeProduct.IsAvailable}", -23),
+            new AuditDemoLog("ImportStock", nameof(InventoryTransaction), "DEMO-AUDIT-IMPORT-001", secondaryStaff.Id, tenant.Id, primaryStore.Id, "Quantity=4", $"Product={mouse.Name}; Quantity=24; Reason=Supplier delivery", -20),
+            new AuditDemoLog("AdjustStock", nameof(InventoryTransaction), "DEMO-AUDIT-ADJUST-001", owner.Id, tenant.Id, primaryStore.Id, "Quantity=24", $"Product={mouse.Name}; Quantity=22; Reason=Display unit count", -17),
+            new AuditDemoLog("ExportStock", nameof(InventoryTransaction), "DEMO-AUDIT-EXPORT-001", primaryStaff.Id, tenant.Id, secondaryStore.Id, "Quantity=10", $"Product={mouse.Name}; Quantity=8; Reason=Inter-store transfer", -14),
+            new AuditDemoLog("LockStaff", nameof(AspNetUser), secondaryStaff.Id, owner.Id, tenant.Id, null, "Status=Active", $"Staff={secondaryStaff.Email}; Status=Locked", -11),
+            new AuditDemoLog("UnlockStaff", nameof(AspNetUser), secondaryStaff.Id, owner.Id, tenant.Id, null, "Status=Locked", $"Staff={secondaryStaff.Email}; Status=Active", -9),
+            new AuditDemoLog("DisableStoreProduct", nameof(StoreProduct), storeProduct.Id.ToString(), owner.Id, tenant.Id, primaryStore.Id, "Available=True", $"Store={primaryStore.Code}; Product={mouse.Name}; Available=False", -7),
+            new AuditDemoLog("EnableStoreProduct", nameof(StoreProduct), storeProduct.Id.ToString(), owner.Id, tenant.Id, primaryStore.Id, "Available=False", $"Store={primaryStore.Code}; Product={mouse.Name}; Available=True", -5),
+            new AuditDemoLog("SuspendTenant", nameof(Tenant), tenant.Id.ToString(), admin.Id, tenant.Id, null, "Status=Active", $"Tenant={tenant.Name}; Status=Suspended", -4),
+            new AuditDemoLog("ActivateTenant", nameof(Tenant), tenant.Id.ToString(), admin.Id, tenant.Id, null, "Status=Suspended", $"Tenant={tenant.Name}; Status=Active", -3),
+            new AuditDemoLog("Logout", nameof(AspNetUser), owner.Id, owner.Id, tenant.Id, null, null, "User=owner@demo.local", -1)
+        };
+
+        foreach (var log in logs)
+        {
+            await EnsureAuditLogAsync(
+                db,
+                log.Action,
+                log.EntityName,
+                log.EntityId,
+                log.UserId,
+                log.TenantId,
+                log.StoreId,
+                log.NewValue,
+                cancellationToken,
+                createdAt: now.AddMinutes(log.MinutesFromNow),
+                oldValue: log.OldValue);
+        }
+    }
+
     private static async Task EnsureAuditLogAsync(
         StoreFlowDbContext db,
         string action,
@@ -1483,7 +1600,9 @@ public static class DevelopmentDataSeeder
         Guid? tenantId,
         Guid? storeId,
         string newValue,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        DateTime? createdAt = null,
+        string? oldValue = null)
     {
         var exists = await db.AuditLogs.AnyAsync(
             x => x.Action == action && x.EntityName == entityName && x.EntityId == entityId,
@@ -1501,10 +1620,11 @@ public static class DevelopmentDataSeeder
             UserId = userId,
             TenantId = tenantId,
             StoreId = storeId,
+            OldValue = oldValue,
             NewValue = newValue,
             IpAddress = "seed",
             UserAgent = "DevelopmentDataSeeder",
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = createdAt ?? DateTime.UtcNow
         });
         await db.SaveChangesAsync(cancellationToken);
     }
@@ -1528,6 +1648,25 @@ public static class DevelopmentDataSeeder
         bool IsActive);
 
     private sealed record StoreProductSeed(string StoreCode, string Sku, decimal? SellingPrice, bool IsAvailable);
+
+    private sealed record SystemPaymentSeed(
+        decimal Amount,
+        string Method,
+        string Status,
+        DateTime? PaidAt,
+        string InvoiceUrl,
+        DateTime CreatedAt);
+
+    private sealed record AuditDemoLog(
+        string Action,
+        string EntityName,
+        string EntityId,
+        string UserId,
+        Guid? TenantId,
+        Guid? StoreId,
+        string? OldValue,
+        string NewValue,
+        int MinutesFromNow);
 
     private sealed record InventorySeed(string StoreProductKey, decimal Quantity, decimal MinQuantity);
 

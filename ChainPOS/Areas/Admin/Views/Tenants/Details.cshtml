@@ -13,6 +13,7 @@
         </div>
         <div class="flex flex-wrap items-center gap-2">
             <a asp-action="Index" class="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:border-orange-200 hover:text-orange-600">Back</a>
+            <a asp-controller="Subscriptions" asp-action="Create" asp-route-tenantId="@Model.Id" class="rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600">Change Plan</a>
             @if (Model.Status != TenantStatuses.Active)
             {
                 <form id="tenant-activate-@Model.Id" asp-action="Activate" asp-route-id="@Model.Id" method="post" onsubmit="return openConfirmModal(this.id, 'Activate tenant', 'Tenant users will be able to sign in again.');">

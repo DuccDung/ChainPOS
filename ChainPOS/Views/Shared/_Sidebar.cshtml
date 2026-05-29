@@ -55,17 +55,19 @@
                 <span>Tenants</span>
                 @Html.Raw(Dot("tenants"))
             </a>
-            <a href="#" class="@NavClass("plans")">
+            <a asp-area="Admin" asp-controller="SubscriptionPlans" asp-action="Index" class="@NavClass("plans")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5 1h.01M14 15h.01M5 5h14v14H5z" />
                 </svg>
                 <span>Plans</span>
+                @Html.Raw(Dot("plans"))
             </a>
-            <a href="#" class="@NavClass("payments")">
+            <a asp-area="Admin" asp-controller="SystemPayments" asp-action="Index" class="@NavClass("payments")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9" />
                 </svg>
                 <span>Payments</span>
+                @Html.Raw(Dot("payments"))
             </a>
             <p class="px-3 mt-5 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">System</p>
             <a asp-area="Admin" asp-controller="Reports" asp-action="Index" class="@NavClass("reports")">
@@ -74,11 +76,12 @@
                 </svg>
                 <span>Reports</span>
             </a>
-            <a href="#" class="@NavClass("audit")">
+            <a asp-area="Admin" asp-controller="AuditLogs" asp-action="Index" class="@NavClass("audit")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M5 5h14v14H5V5z" />
                 </svg>
                 <span>Audit Logs</span>
+                @Html.Raw(Dot("audit"))
             </a>
             <a href="#" class="@NavClass("settings")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -151,6 +154,20 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m4 6V7m4 10v-3M5 21h14" />
                 </svg>
                 <span>Reports</span>
+            </a>
+            <a asp-area="Owner" asp-controller="AuditLogs" asp-action="Index" class="@NavClass("audit")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M5 5h14v14H5V5z" />
+                </svg>
+                <span>Audit Logs</span>
+                @Html.Raw(Dot("audit"))
+            </a>
+            <a asp-area="Owner" asp-controller="Subscription" asp-action="Index" class="@NavClass("subscription")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5 1h.01M14 15h.01M5 5h14v14H5z" />
+                </svg>
+                <span>Subscription</span>
+                @Html.Raw(Dot("subscription"))
             </a>
         }
         else

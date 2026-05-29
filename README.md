@@ -162,6 +162,7 @@ Dữ liệu demo đã seed:
 - 13 products
 - 13 store-product assignments hiển thị được
 - 4 active subscriptions
+- System payment demo với trạng thái `Paid`, `Pending`, `Failed`
 - Audit logs cho các thao tác seed chính
 
 Một số sản phẩm demo:
@@ -202,11 +203,19 @@ URL mặc định khi chạy profile `http`:
 http://localhost:5292
 ```
 
-Connection string hiện đọc từ:
+Connection string đọc theo thứ tự cấu hình ASP.NET Core, trong Development có nạp thêm file local bị `.gitignore` chặn:
 
 ```text
-ChainPOS/appsettings.json
+ChainPOS/appsettings.Local.json
 ConnectionStrings:DefaultConnection
+```
+
+`ChainPOS/appsettings.json` chỉ giữ placeholder an toàn. Có thể cấu hình bằng User Secrets hoặc environment variable `ConnectionStrings__DefaultConnection` nếu không dùng `appsettings.Local.json`.
+
+Chạy test tự động:
+
+```powershell
+dotnet test .\ChainPOS.sln
 ```
 
 ## Cấu trúc thư mục chính
@@ -230,9 +239,11 @@ ChainPOS/
     Owner/
     Security/
     Seed/
+    Subscriptions/
   ViewModels/
   Views/
   wwwroot/
+ChainPOS.Tests/
 ```
 
 ## Quy tắc phát triển
@@ -249,6 +260,12 @@ Backlog và trạng thái task nằm trong:
 ChainPOS/Task.md
 ```
 
+Tài liệu nghiệp vụ và hướng dẫn test trực quan nằm trong:
+
+```text
+BUSINESS_WORKFLOW_TEST_GUIDE.md
+```
+
 Nguyên tắc quan trọng:
 
 - Không bind trực tiếp entity scaffolded từ request. Dùng ViewModel/InputModel.
@@ -263,15 +280,11 @@ Nguyên tắc quan trọng:
 
 ## Trạng thái tiếp theo
 
-Phần nên làm tiếp theo theo `Task.md` là Phase 6: Inventory.
+Các phần vừa hoàn tất thêm gồm audit log viewer, subscription/admin billing UI, dữ liệu demo billing, test tự động bước đầu và hardening connection string.
 
-Các mục chính:
+Các mục còn nên làm tiếp theo:
 
-- Owner/Staff xem danh sách tồn kho theo tenant/store.
-- Low stock dựa trên `Quantity <= MinQuantity`.
-- Import stock.
-- Export stock.
-- Adjust stock.
-- Ghi `InventoryTransactions`.
-- Ghi audit log.
-- Dùng database transaction cho nghiệp vụ kho.
+- Bổ sung test cho tạo owner/staff và các luồng admin billing chi tiết.
+- Export Excel cho report nếu cần.
+- Bổ sung low stock/recent orders vào Owner dashboard.
+- Rà soát security checklist còn lại như upload limit và manual permission test.

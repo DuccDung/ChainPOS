@@ -12,11 +12,24 @@ using ChainPOS.Services.Reports;
 using ChainPOS.Services.Sales;
 using ChainPOS.Services.Security;
 using ChainPOS.Services.Seed;
+using ChainPOS.Services.Subscriptions;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+}
+
+var defaultConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(defaultConnectionString))
+{
+    throw new InvalidOperationException(
+        "ConnectionStrings:DefaultConnection is not configured. Set it via User Secrets, environment variables, or appsettings.Local.json.");
+}
 
 // Add services to the container.
 builder.Services.AddControllersWithViews(options =>
@@ -24,13 +37,14 @@ builder.Services.AddControllersWithViews(options =>
     options.Filters.Add<RequireTenantFilter>();
 });
 builder.Services.AddDbContext<StoreFlowDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(defaultConnectionString));
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<PasswordHasher<AspNetUser>>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IStoreAccessService, StoreAccessService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+builder.Services.AddScoped<IAuditLogQueryService, AuditLogQueryService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IAdminManagementService, AdminManagementService>();
 builder.Services.AddScoped<IOwnerStoreService, OwnerStoreService>();
@@ -43,6 +57,7 @@ builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IShiftService, ShiftService>();
 builder.Services.AddScoped<IPosService, PosService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<ISubscriptionManagementService, SubscriptionManagementService>();
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

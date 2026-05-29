@@ -11,4 +11,15 @@ public interface IAuditLogService
         Guid? tenantId = null,
         Guid? storeId = null,
         CancellationToken cancellationToken = default);
+
+    Task LogForUserAsync(
+        string action,
+        string? userId,
+        string? entityName = null,
+        string? entityId = null,
+        string? oldValue = null,
+        string? newValue = null,
+        Guid? tenantId = null,
+        Guid? storeId = null,
+        CancellationToken cancellationToken = default);
 }

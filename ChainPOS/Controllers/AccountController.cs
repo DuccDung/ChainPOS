@@ -1,4 +1,7 @@
+using System.Security.Claims;
 using ChainPOS.Constants;
+using ChainPOS.Models;
+using ChainPOS.Services.Audit;
 using ChainPOS.Services.Auth;
 using ChainPOS.ViewModels.Auth;
 using Microsoft.AspNetCore.Authentication;
@@ -11,10 +14,12 @@ namespace ChainPOS.Controllers;
 public class AccountController : Controller
 {
     private readonly IAuthService _authService;
+    private readonly IAuditLogService _auditLog;
 
-    public AccountController(IAuthService authService)
+    public AccountController(IAuthService authService, IAuditLogService auditLog)
     {
         _authService = authService;
+        _auditLog = auditLog;
     }
 
     [HttpGet("login")]
@@ -72,6 +77,14 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        await _auditLog.LogAsync(
+            "Logout",
+            nameof(AspNetUser),
+            userId,
+            newValue: $"User={User.Identity?.Name}",
+            cancellationToken: HttpContext.RequestAborted);
+
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return RedirectToAction(nameof(Login));
     }

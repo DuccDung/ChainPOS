@@ -1,0 +1,142 @@
+@using ChainPOS.Constants
+@model ChainPOS.ViewModels.Owner.Subscriptions.OwnerSubscriptionIndexViewModel
+@{
+    ViewData["Title"] = "Subscription";
+    ViewData["ActiveMenu"] = "subscription";
+    string Money(decimal value) => value.ToString("#,##0.##");
+    string DateText(DateOnly? value) => value?.ToString("dd/MM/yyyy") ?? "-";
+    string DateTimeText(DateTime? value) => value?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-";
+    string Limit(int? value) => value.HasValue ? value.Value.ToString("#,##0") : "Unlimited";
+    string StatusClass(string status) => status switch
+    {
+        SubscriptionStatuses.Active => "bg-green-50 text-green-700 border-green-100",
+        SubscriptionStatuses.Trial => "bg-blue-50 text-blue-700 border-blue-100",
+        SubscriptionStatuses.Expired => "bg-amber-50 text-amber-700 border-amber-100",
+        SubscriptionStatuses.Cancelled => "bg-red-50 text-red-700 border-red-100",
+        SubscriptionStatuses.Suspended => "bg-red-50 text-red-700 border-red-100",
+        _ => "bg-gray-50 text-gray-600 border-gray-100"
+    };
+    string PaymentStatusClass(string status) => status switch
+    {
+        PaymentStatuses.Paid => "bg-green-50 text-green-700 border-green-100",
+        PaymentStatuses.Failed => "bg-red-50 text-red-700 border-red-100",
+        PaymentStatuses.Pending => "bg-amber-50 text-amber-700 border-amber-100",
+        _ => "bg-gray-50 text-gray-600 border-gray-100"
+    };
+}
+
+<div class="flex flex-col gap-5">
+    <div>
+        <div class="flex items-center gap-2 text-sm text-gray-400 mb-0.5">
+            <a asp-area="Owner" asp-controller="Dashboard" asp-action="Index" class="hover:text-orange-500">Dashboard</a>
+            <span>/</span><span class="text-orange-500 font-medium">Subscription</span>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-900">Subscription</h1>
+        <p class="text-sm text-gray-500 mt-1">@Model.TenantName SaaS plan and payment history.</p>
+    </div>
+
+    @if (Model.CurrentSubscription is null)
+    {
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+            <p class="font-semibold text-amber-800">No active subscription</p>
+            <p class="text-sm text-amber-700 mt-1">Contact platform admin to assign a subscription plan.</p>
+        </div>
+    }
+    else
+    {
+        var current = Model.CurrentSubscription;
+        <section class="bg-white rounded-2xl border border-orange-100 shadow-sm p-5">
+            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-xl font-bold text-gray-900">@current.PlanName</h2>
+                        <span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @StatusClass(current.Status)">@current.Status</span>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">@Money(current.Price) / @current.BillingCycle</p>
+                    <p class="text-xs text-gray-400 mt-1">Valid @DateText(current.StartDate) - @DateText(current.EndDate) · Auto renew @(current.AutoRenew ? "enabled" : "disabled")</p>
+                </div>
+                <div class="grid grid-cols-3 gap-3 min-w-[320px]">
+                    <div class="rounded-xl bg-orange-50 p-3"><p class="text-xs text-orange-600 font-semibold">Stores</p><p class="text-lg font-bold text-gray-900">@Limit(current.MaxStores)</p></div>
+                    <div class="rounded-xl bg-amber-50 p-3"><p class="text-xs text-amber-600 font-semibold">Staff</p><p class="text-lg font-bold text-gray-900">@Limit(current.MaxStaff)</p></div>
+                    <div class="rounded-xl bg-green-50 p-3"><p class="text-xs text-green-600 font-semibold">Products</p><p class="text-lg font-bold text-gray-900">@Limit(current.MaxProducts)</p></div>
+                </div>
+            </div>
+            @if (current.IsExpired)
+            {
+                <div class="mt-4 bg-red-50 border border-red-100 rounded-xl p-3 text-sm text-red-700">This subscription has passed its end date.</div>
+            }
+        </section>
+    }
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <section class="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-50">
+                <h3 class="font-bold text-gray-900">Subscription History</h3>
+                <p class="text-xs text-gray-400 mt-0.5">@Model.SubscriptionHistory.Count record(s)</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead><tr class="bg-amber-50 text-gray-500 text-xs font-semibold uppercase"><th class="px-5 py-3 text-left">Plan</th><th class="px-5 py-3 text-left">Period</th><th class="px-5 py-3 text-left">Status</th><th class="px-5 py-3 text-right">Price</th></tr></thead>
+                    <tbody class="divide-y divide-gray-50">
+                        @if (Model.SubscriptionHistory.Count == 0)
+                        {
+                            <tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-400">No subscriptions found.</td></tr>
+                        }
+                        else
+                        {
+                            foreach (var item in Model.SubscriptionHistory)
+                            {
+                                <tr class="hover:bg-orange-50/30">
+                                    <td class="px-5 py-3.5 font-semibold text-gray-800">@item.PlanName</td>
+                                    <td class="px-5 py-3.5 text-xs text-gray-500">@DateText(item.StartDate) - @DateText(item.EndDate)</td>
+                                    <td class="px-5 py-3.5"><span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @StatusClass(item.Status)">@item.Status</span></td>
+                                    <td class="px-5 py-3.5 text-right font-bold text-gray-900">@Money(item.Price)</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-50">
+                <h3 class="font-bold text-gray-900">Payment History</h3>
+                <p class="text-xs text-gray-400 mt-0.5">@Model.PaymentHistory.Count record(s)</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead><tr class="bg-amber-50 text-gray-500 text-xs font-semibold uppercase"><th class="px-5 py-3 text-left">Plan</th><th class="px-5 py-3 text-right">Amount</th><th class="px-5 py-3 text-left">Status</th><th class="px-5 py-3 text-left">Paid</th><th class="px-5 py-3 text-left">Invoice</th></tr></thead>
+                    <tbody class="divide-y divide-gray-50">
+                        @if (Model.PaymentHistory.Count == 0)
+                        {
+                            <tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-400">No payments found.</td></tr>
+                        }
+                        else
+                        {
+                            foreach (var item in Model.PaymentHistory)
+                            {
+                                <tr class="hover:bg-orange-50/30">
+                                    <td class="px-5 py-3.5 font-semibold text-gray-800">@item.PlanName</td>
+                                    <td class="px-5 py-3.5 text-right font-bold text-gray-900">@Money(item.Amount)</td>
+                                    <td class="px-5 py-3.5"><span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @PaymentStatusClass(item.Status)">@item.Status</span></td>
+                                    <td class="px-5 py-3.5 text-xs text-gray-400">@DateTimeText(item.PaidAt)</td>
+                                    <td class="px-5 py-3.5">
+                                        @if (!string.IsNullOrWhiteSpace(item.InvoiceUrl))
+                                        {
+                                            <a href="@item.InvoiceUrl" target="_blank" rel="noopener" class="text-xs font-semibold text-orange-600 hover:text-orange-700">View</a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-xs text-gray-300">-</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>

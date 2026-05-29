@@ -1,0 +1,130 @@
+@using ChainPOS.Constants
+@model ChainPOS.ViewModels.Admin.SystemPayments.SystemPaymentIndexViewModel
+@{
+    ViewData["Title"] = "System Payments";
+    ViewData["ActiveMenu"] = "payments";
+    string Money(decimal value) => value.ToString("#,##0.##");
+    string DateTimeText(DateTime? value) => value?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-";
+    string StatusClass(string status) => status switch
+    {
+        PaymentStatuses.Paid => "bg-green-50 text-green-700 border-green-100",
+        PaymentStatuses.Failed => "bg-red-50 text-red-700 border-red-100",
+        PaymentStatuses.Pending => "bg-amber-50 text-amber-700 border-amber-100",
+        _ => "bg-gray-50 text-gray-600 border-gray-100"
+    };
+}
+
+<div class="flex flex-col gap-5">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-gray-400 mb-0.5">
+                <a asp-area="Admin" asp-controller="Dashboard" asp-action="Index" class="hover:text-orange-500">Dashboard</a>
+                <span>/</span><span class="text-orange-500 font-medium">System Payments</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">System Payments</h1>
+            <p class="text-sm text-gray-500 mt-1">Track SaaS subscription payments from tenants.</p>
+        </div>
+        <a asp-area="Admin" asp-controller="Subscriptions" asp-action="Create" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-sm font-semibold rounded-xl hover:from-orange-600 hover:to-amber-600 shadow-sm">
+            Create Subscription
+        </a>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-2xl font-bold text-gray-900">@Model.TotalPayments</p><p class="text-xs text-gray-500">Total payments</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-2xl font-bold text-amber-600">@Model.PendingPayments</p><p class="text-xs text-gray-500">Pending</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-2xl font-bold text-green-600">@Model.PaidPayments</p><p class="text-xs text-gray-500">Paid</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-2xl font-bold text-gray-900">@Money(Model.PaidAmount)</p><p class="text-xs text-gray-500">Paid amount</p></div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+        <div class="flex flex-col md:flex-row md:items-center justify-between px-5 py-4 gap-3 border-b border-gray-50">
+            <div>
+                <h3 class="font-bold text-gray-900">Payment Ledger</h3>
+                <p class="text-xs text-gray-400 mt-0.5">Showing @Model.Payments.Count record(s)</p>
+            </div>
+            <form asp-action="Index" method="get" class="flex items-center gap-2 flex-wrap">
+                <select name="tenantId" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 text-gray-600">
+                    <option value="">All Tenants</option>
+                    @foreach (var tenant in Model.Tenants)
+                    {
+                        <option value="@tenant.Id" selected="@(Model.TenantId == tenant.Id)">@tenant.Name</option>
+                    }
+                </select>
+                <select name="status" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 text-gray-600">
+                    <option value="">All Statuses</option>
+                    <option value="@PaymentStatuses.Pending" selected="@(Model.Status == PaymentStatuses.Pending)">Pending</option>
+                    <option value="@PaymentStatuses.Paid" selected="@(Model.Status == PaymentStatuses.Paid)">Paid</option>
+                    <option value="@PaymentStatuses.Failed" selected="@(Model.Status == PaymentStatuses.Failed)">Failed</option>
+                </select>
+                <input name="search" value="@Model.Search" placeholder="Search payment..." class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 w-52" />
+                <button type="submit" class="px-4 py-2 bg-orange-500 text-white text-sm font-semibold rounded-xl hover:bg-orange-600">Filter</button>
+            </form>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-amber-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                        <th class="px-5 py-3 text-left">Tenant</th>
+                        <th class="px-5 py-3 text-left">Plan</th>
+                        <th class="px-5 py-3 text-right">Amount</th>
+                        <th class="px-5 py-3 text-left">Method</th>
+                        <th class="px-5 py-3 text-left">Status</th>
+                        <th class="px-5 py-3 text-left">Created</th>
+                        <th class="px-5 py-3 text-left">Paid At</th>
+                        <th class="px-5 py-3 text-left">Invoice</th>
+                        <th class="px-5 py-3 text-left">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    @if (Model.Payments.Count == 0)
+                    {
+                        <tr><td colspan="9" class="px-5 py-10 text-center text-sm text-gray-400">No payments found.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var payment in Model.Payments)
+                        {
+                            <tr class="hover:bg-orange-50/30">
+                                <td class="px-5 py-3.5 font-semibold text-gray-800">@payment.TenantName</td>
+                                <td class="px-5 py-3.5 text-gray-600">@payment.PlanName</td>
+                                <td class="px-5 py-3.5 text-right font-bold text-gray-900">@Money(payment.Amount)</td>
+                                <td class="px-5 py-3.5 text-gray-600">@payment.Method</td>
+                                <td class="px-5 py-3.5"><span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @StatusClass(payment.Status)">@payment.Status</span></td>
+                                <td class="px-5 py-3.5 text-xs text-gray-400">@DateTimeText(payment.CreatedAt)</td>
+                                <td class="px-5 py-3.5 text-xs text-gray-400">@DateTimeText(payment.PaidAt)</td>
+                                <td class="px-5 py-3.5">
+                                    @if (!string.IsNullOrWhiteSpace(payment.InvoiceUrl))
+                                    {
+                                        <a href="@payment.InvoiceUrl" target="_blank" rel="noopener" class="text-xs font-semibold text-orange-600 hover:text-orange-700">Invoice</a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-xs text-gray-300">-</span>
+                                    }
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <div class="flex items-center gap-1">
+                                        @if (payment.Status != PaymentStatuses.Paid)
+                                        {
+                                            <form asp-action="MarkPaid" asp-route-id="@payment.Id" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="px-3 py-1.5 rounded-lg bg-green-50 text-green-700 text-xs font-semibold hover:bg-green-100">Paid</button>
+                                            </form>
+                                        }
+                                        @if (payment.Status != PaymentStatuses.Failed)
+                                        {
+                                            <form asp-action="MarkFailed" asp-route-id="@payment.Id" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100">Failed</button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using ChainPOS.Constants;
 using ChainPOS.Models;
+using ChainPOS.Services.Audit;
 using ChainPOS.ViewModels.Auth;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
@@ -15,11 +16,16 @@ public sealed class AuthService : IAuthService
 
     private readonly StoreFlowDbContext _db;
     private readonly PasswordHasher<AspNetUser> _passwordHasher;
+    private readonly IAuditLogService _auditLog;
 
-    public AuthService(StoreFlowDbContext db, PasswordHasher<AspNetUser> passwordHasher)
+    public AuthService(
+        StoreFlowDbContext db,
+        PasswordHasher<AspNetUser> passwordHasher,
+        IAuditLogService auditLog)
     {
         _db = db;
         _passwordHasher = passwordHasher;
+        _auditLog = auditLog;
     }
 
     public async Task<LoginResult> PasswordSignInAsync(LoginViewModel model, CancellationToken cancellationToken = default)
@@ -99,6 +105,15 @@ public sealed class AuthService : IAuthService
         user.LockoutEnd = null;
         user.LastLoginAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
+
+        await _auditLog.LogForUserAsync(
+            "Login",
+            user.Id,
+            nameof(AspNetUser),
+            user.Id,
+            newValue: $"Email={user.Email}; Role={primaryRole}",
+            tenantId: user.TenantId,
+            cancellationToken: cancellationToken);
 
         var principal = BuildPrincipal(user, roleNames);
         return LoginResult.Success(principal, primaryRole);
