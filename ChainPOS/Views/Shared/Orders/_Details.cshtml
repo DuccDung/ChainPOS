@@ -1,0 +1,119 @@
+@using ChainPOS.Constants
+@model ChainPOS.ViewModels.Sales.OrderDetailsViewModel
+@{
+    string OrderBadge(string status) => status == OrderStatuses.Cancelled
+        ? "badge-cancelled px-2.5 py-0.5 rounded-full text-xs font-semibold"
+        : "badge-delivered px-2.5 py-0.5 rounded-full text-xs font-semibold";
+}
+
+<div class="max-w-5xl space-y-5">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 no-print">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-gray-400 mb-0.5">
+                <a asp-area="@Model.AreaName" asp-controller="Orders" asp-action="Index" class="hover:text-orange-500">Orders</a>
+                <span>/</span><span class="text-orange-500 font-medium">@Model.OrderCode</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">Order Receipt</h1>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <button type="button" onclick="window.print()" class="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-700 hover:bg-orange-100">Print</button>
+            @if (Model.CanCancel)
+            {
+                <form asp-area="@Model.AreaName" asp-controller="Orders" asp-action="Cancel" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Cancel this order and return stock?');">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-100">Cancel Order</button>
+                </form>
+            }
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+        <div class="bg-gradient-to-r from-orange-500 to-amber-500 p-6 flex justify-between items-start">
+            <div>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h18v4H3V3zm2 6h14v12H5V9zm3 3h8m-8 4h5" /></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-white font-bold text-xl">ChainPOS</h2>
+                        <p class="text-orange-100 text-sm">Retail POS Receipt</p>
+                    </div>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-white font-bold text-xl">@Model.OrderCode</p>
+                <p class="text-orange-100 text-xs">@Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+                <span class="@OrderBadge(Model.OrderStatus) inline-block mt-2">@Model.OrderStatus</span>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="rounded-2xl border border-orange-100 p-4">
+                    <p class="text-xs text-gray-400 mb-1">STORE</p>
+                    <p class="font-bold text-gray-900">@Model.StoreName</p>
+                    <p class="font-mono text-xs text-gray-400">@Model.StoreCode</p>
+                </div>
+                <div class="rounded-2xl border border-orange-100 p-4">
+                    <p class="text-xs text-gray-400 mb-1">STAFF</p>
+                    <p class="font-bold text-gray-900">@(Model.StaffName ?? "-")</p>
+                    <p class="text-xs text-gray-400">Shift @(Model.ShiftCode ?? "-")</p>
+                </div>
+                <div class="rounded-2xl border border-orange-100 p-4">
+                    <p class="text-xs text-gray-400 mb-1">PAYMENT</p>
+                    <p class="font-bold text-gray-900">@Model.PaymentStatus</p>
+                    <p class="text-xs text-gray-400">@Model.Payments.Count payment record(s)</p>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-2xl border border-orange-100 mb-5">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-amber-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                            <th class="px-5 py-3 text-left">Product</th>
+                            <th class="px-5 py-3 text-left">SKU</th>
+                            <th class="px-5 py-3 text-right">Qty</th>
+                            <th class="px-5 py-3 text-right">Unit Price</th>
+                            <th class="px-5 py-3 text-right">Line Total</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50">
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td class="px-5 py-3.5 font-semibold text-gray-900">@item.ProductName</td>
+                                <td class="px-5 py-3.5 font-mono text-xs text-gray-400">@(item.Sku ?? "-")</td>
+                                <td class="px-5 py-3.5 text-right">@item.Quantity.ToString("#,##0.###")</td>
+                                <td class="px-5 py-3.5 text-right">@item.UnitPrice.ToString("#,##0.##")</td>
+                                <td class="px-5 py-3.5 text-right font-bold text-gray-900">@item.LineTotal.ToString("#,##0.##")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_340px] gap-5">
+                <div class="rounded-2xl border border-orange-100 p-4">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Payments</p>
+                    @foreach (var payment in Model.Payments)
+                    {
+                        <div class="flex justify-between py-2 border-b border-gray-50 last:border-b-0 text-sm">
+                            <span class="text-gray-600">@payment.Method (@payment.Status)</span>
+                            <span class="font-semibold text-gray-900">@payment.Amount.ToString("#,##0.##")</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.Note))
+                    {
+                        <p class="text-xs text-gray-400 mt-3">@Model.Note</p>
+                    }
+                </div>
+                <div class="rounded-2xl bg-orange-50 border border-orange-100 p-4">
+                    <div class="flex justify-between py-2 text-sm"><span class="text-gray-600">Subtotal</span><span class="font-semibold">@Model.SubTotal.ToString("#,##0.##")</span></div>
+                    <div class="flex justify-between py-2 text-sm"><span class="text-gray-600">Discount</span><span class="font-semibold">@Model.DiscountAmount.ToString("#,##0.##")</span></div>
+                    <div class="flex justify-between py-2 text-sm"><span class="text-gray-600">Tax</span><span class="font-semibold">@Model.TaxAmount.ToString("#,##0.##")</span></div>
+                    <div class="flex justify-between pt-3 mt-2 border-t border-orange-200"><span class="font-bold text-gray-900">Total</span><span class="font-bold text-orange-600 text-xl">@Model.TotalAmount.ToString("#,##0.##")</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

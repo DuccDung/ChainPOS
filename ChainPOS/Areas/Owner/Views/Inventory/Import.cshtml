@@ -1,0 +1,12 @@
+@model ChainPOS.ViewModels.Inventory.InventoryMovementViewModel
+@{
+    ViewData["Title"] = "Import Stock";
+    ViewData["ActiveMenu"] = "inventory";
+    ViewData["Movement"] = "Import";
+}
+
+<partial name="~/Views/Shared/Inventory/_MovementForm.cshtml" model="Model" view-data="ViewData" />
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

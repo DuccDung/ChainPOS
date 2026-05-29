@@ -68,7 +68,7 @@
                 <span>Payments</span>
             </a>
             <p class="px-3 mt-5 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">System</p>
-            <a href="#" class="@NavClass("reports")">
+            <a asp-area="Admin" asp-controller="Reports" asp-action="Index" class="@NavClass("reports")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m4 6V7m4 10v-3M5 21h14" />
                 </svg>
@@ -121,26 +121,32 @@
                 </svg>
                 <span>Store Products</span>
             </a>
-            <a href="#" class="@NavClass("inventory")">
+            <a asp-area="Owner" asp-controller="Inventory" asp-action="Index" class="@NavClass("inventory")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16" />
                 </svg>
                 <span>Inventory</span>
             </a>
             <p class="px-3 mt-5 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Sales</p>
-            <a href="#" class="@NavClass("pos")">
+            <a asp-area="Owner" asp-controller="Pos" asp-action="Index" class="@NavClass("pos")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h.01M11 15h2M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
                 </svg>
                 <span>POS</span>
             </a>
-            <a href="#" class="@NavClass("orders")">
+            <a asp-area="Owner" asp-controller="Shifts" asp-action="Index" class="@NavClass("shifts")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Shifts</span>
+            </a>
+            <a asp-area="Owner" asp-controller="Orders" asp-action="Index" class="@NavClass("orders")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
                 </svg>
                 <span>Orders</span>
             </a>
-            <a href="#" class="@NavClass("reports")">
+            <a asp-area="Owner" asp-controller="Reports" asp-action="Index" class="@NavClass("reports")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m4 6V7m4 10v-3M5 21h14" />
                 </svg>
@@ -150,25 +156,25 @@
         else
         {
             <p class="px-3 mt-5 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Store Work</p>
-            <a href="#" class="@NavClass("pos")">
+            <a asp-area="Staff" asp-controller="Pos" asp-action="Index" class="@NavClass("pos")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h.01M11 15h2M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
                 </svg>
                 <span>POS</span>
             </a>
-            <a href="#" class="@NavClass("inventory")">
+            <a asp-area="Staff" asp-controller="Inventory" asp-action="Index" class="@NavClass("inventory")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16" />
                 </svg>
                 <span>Inventory</span>
             </a>
-            <a href="#" class="@NavClass("shifts")">
+            <a asp-area="Staff" asp-controller="Shifts" asp-action="Index" class="@NavClass("shifts")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span>Shifts</span>
             </a>
-            <a href="#" class="@NavClass("orders")">
+            <a asp-area="Staff" asp-controller="Orders" asp-action="Index" class="@NavClass("orders")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
                 </svg>

@@ -69,6 +69,8 @@ public static class DevelopmentDataSeeder
         var categories = await EnsureDemoCategoriesAsync(db, demoTenant, demoOwner, cancellationToken);
         var products = await EnsureDemoProductsAsync(db, demoTenant, demoOwner, categories, cancellationToken);
         var storeProducts = await EnsureDemoStoreProductsAsync(db, demoTenant, demoOwner, stores, products, cancellationToken);
+        await EnsureDemoInventoryAsync(db, demoTenant, demoOwner, storeProducts, cancellationToken);
+        await EnsureDemoSalesDataAsync(db, demoTenant, demoOwner, stores, staff, storeProducts, cancellationToken);
 
         await EnsureExtraOwnerTenantsAsync(db, passwordHasher, plan, admin, cancellationToken);
         await EnsureSeedAuditLogsAsync(db, admin, demoOwner, demoTenant, stores, staff, categories, products, storeProducts, cancellationToken);
@@ -673,6 +675,722 @@ public static class DevelopmentDataSeeder
         return storeProducts;
     }
 
+    private static async Task EnsureDemoInventoryAsync(
+        StoreFlowDbContext db,
+        Tenant tenant,
+        AspNetUser owner,
+        IReadOnlyDictionary<string, StoreProduct> storeProducts,
+        CancellationToken cancellationToken)
+    {
+        var seeds = new[]
+        {
+            new InventorySeed("TZ-HCM-01:MBP14-M3P-18-512", 12m, 3m),
+            new InventorySeed("TZ-HCM-01:IPH15P-256-NT", 18m, 5m),
+            new InventorySeed("TZ-HCM-01:SS-S24U-256-GRY", 7m, 5m),
+            new InventorySeed("TZ-HCM-01:LOGI-MX3S-GR", 4m, 8m),
+            new InventorySeed("TZ-HCM-01:DELL-U2723QE", 6m, 2m),
+            new InventorySeed("TZ-HCM-02:MBA13-M3-8-256", 10m, 3m),
+            new InventorySeed("TZ-HCM-02:APP2-USBC", 3m, 10m),
+            new InventorySeed("TZ-HCM-02:SONY-WH1000XM5-BLK", 0m, 4m),
+            new InventorySeed("TZ-HCM-02:ANKER-737-24K", 15m, 6m),
+            new InventorySeed("TZ-HN-01:DELL-XPS13P-I7-512", 5m, 2m),
+            new InventorySeed("TZ-HN-01:LOGI-MXKEYSS-GR", 9m, 5m),
+            new InventorySeed("TZ-HN-01:SS-990PRO-1TB", 2m, 6m)
+        };
+
+        foreach (var seed in seeds)
+        {
+            if (!storeProducts.TryGetValue(seed.StoreProductKey, out var storeProduct))
+            {
+                continue;
+            }
+
+            var inventory = await db.Inventories.FirstOrDefaultAsync(
+                x => x.TenantId == tenant.Id
+                    && x.StoreId == storeProduct.StoreId
+                    && x.ProductId == storeProduct.ProductId,
+                cancellationToken);
+            if (inventory is null)
+            {
+                inventory = new ChainPOS.Models.Inventory
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenant.Id,
+                    StoreId = storeProduct.StoreId,
+                    ProductId = storeProduct.ProductId,
+                    Quantity = seed.Quantity,
+                    MinQuantity = seed.MinQuantity,
+                    UpdatedAt = DateTime.UtcNow,
+                    UpdatedBy = owner.Id
+                };
+                db.Inventories.Add(inventory);
+
+                if (seed.Quantity > 0)
+                {
+                    db.InventoryTransactions.Add(new InventoryTransaction
+                    {
+                        Id = Guid.NewGuid(),
+                        TenantId = tenant.Id,
+                        StoreId = storeProduct.StoreId,
+                        ProductId = storeProduct.ProductId,
+                        Type = InventoryTransactionTypes.Import,
+                        Quantity = seed.Quantity,
+                        BeforeQuantity = 0m,
+                        AfterQuantity = seed.Quantity,
+                        Reason = "Seed opening stock",
+                        ReferenceType = "Seed",
+                        CreatedBy = owner.Id,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+            else if (inventory.MinQuantity != seed.MinQuantity)
+            {
+                inventory.MinQuantity = seed.MinQuantity;
+                inventory.UpdatedAt = DateTime.UtcNow;
+                inventory.UpdatedBy = "seed";
+            }
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task EnsureDemoSalesDataAsync(
+        StoreFlowDbContext db,
+        Tenant tenant,
+        AspNetUser owner,
+        IReadOnlyDictionary<string, Store> stores,
+        IReadOnlyDictionary<string, AspNetUser> staff,
+        IReadOnlyDictionary<string, StoreProduct> storeProducts,
+        CancellationToken cancellationToken)
+    {
+        if (!stores.TryGetValue("TZ-HCM-01", out var hcm01)
+            || !stores.TryGetValue("TZ-HCM-02", out var hcm02)
+            || !staff.TryGetValue(DefaultStaffEmail, out var staff01)
+            || !staff.TryGetValue("staff02@demo.local", out var staff02))
+        {
+            return;
+        }
+
+        var businessDay = new DateTime(2026, 5, 29, 0, 0, 0, DateTimeKind.Utc);
+        var yesterday = businessDay.AddDays(-1);
+
+        var hcm01Yesterday = await EnsureDemoShiftAsync(
+            db,
+            tenant,
+            hcm01,
+            staff01,
+            yesterday.AddHours(1),
+            yesterday.AddHours(9),
+            5_000_000m,
+            34_540_000m,
+            cancellationToken);
+
+        var hcm01Today = await EnsureDemoShiftAsync(
+            db,
+            tenant,
+            hcm01,
+            staff02,
+            businessDay.AddHours(1),
+            businessDay.AddHours(7).AddMinutes(30),
+            3_000_000m,
+            3_000_000m,
+            cancellationToken);
+
+        var hcm02Yesterday = await EnsureDemoShiftAsync(
+            db,
+            tenant,
+            hcm02,
+            staff01,
+            yesterday.AddHours(10),
+            yesterday.AddHours(15),
+            2_000_000m,
+            2_000_000m,
+            cancellationToken);
+
+        var hcm02Open = await EnsureDemoOpenShiftAsync(
+            db,
+            tenant,
+            hcm02,
+            staff01,
+            businessDay.AddHours(2),
+            4_000_000m,
+            cancellationToken);
+
+        var orders = new List<(Order Order, bool IsCancelled)>();
+
+        var order = await EnsureDemoOrderAsync(
+            db,
+            tenant,
+            owner,
+            hcm01,
+            staff01,
+            hcm01Yesterday,
+            storeProducts,
+            "POS-DEMO-0001",
+            yesterday.AddHours(2).AddMinutes(15),
+            PaymentMethods.Cash,
+            "CASH-DEMO-0001",
+            490_000m,
+            false,
+            "Walk-in customer bought phone accessories.",
+            new[]
+            {
+                new OrderItemSeed("IPH15P-256-NT", 1m),
+                new OrderItemSeed("LOGI-MX3S-GR", 1m)
+            },
+            cancellationToken);
+        if (order is not null)
+        {
+            orders.Add((order, false));
+        }
+
+        order = await EnsureDemoOrderAsync(
+            db,
+            tenant,
+            owner,
+            hcm01,
+            staff01,
+            hcm01Yesterday,
+            storeProducts,
+            "POS-DEMO-0002",
+            yesterday.AddHours(4).AddMinutes(40),
+            PaymentMethods.Card,
+            "CARD-DEMO-0002",
+            0m,
+            false,
+            "MacBook checkout paid by card.",
+            new[]
+            {
+                new OrderItemSeed("MBP14-M3P-18-512", 1m)
+            },
+            cancellationToken);
+        if (order is not null)
+        {
+            orders.Add((order, false));
+        }
+
+        order = await EnsureDemoOrderAsync(
+            db,
+            tenant,
+            owner,
+            hcm01,
+            staff02,
+            hcm01Today,
+            storeProducts,
+            "POS-DEMO-0003",
+            businessDay.AddHours(3).AddMinutes(20),
+            PaymentMethods.BankTransfer,
+            "BANK-DEMO-0003",
+            0m,
+            false,
+            "Bundle checkout for monitor and flagship phone.",
+            new[]
+            {
+                new OrderItemSeed("SS-S24U-256-GRY", 1m),
+                new OrderItemSeed("DELL-U2723QE", 1m)
+            },
+            cancellationToken);
+        if (order is not null)
+        {
+            orders.Add((order, false));
+        }
+
+        order = await EnsureDemoOrderAsync(
+            db,
+            tenant,
+            owner,
+            hcm02,
+            staff01,
+            hcm02Yesterday,
+            storeProducts,
+            "POS-DEMO-0004",
+            yesterday.AddHours(11).AddMinutes(25),
+            PaymentMethods.Momo,
+            "MOMO-DEMO-0004",
+            0m,
+            false,
+            "Audio and power accessory checkout.",
+            new[]
+            {
+                new OrderItemSeed("APP2-USBC", 1m),
+                new OrderItemSeed("ANKER-737-24K", 2m)
+            },
+            cancellationToken);
+        if (order is not null)
+        {
+            orders.Add((order, false));
+        }
+
+        order = await EnsureDemoOrderAsync(
+            db,
+            tenant,
+            owner,
+            hcm02,
+            staff01,
+            hcm02Yesterday,
+            storeProducts,
+            "POS-DEMO-VOID-0001",
+            yesterday.AddHours(13).AddMinutes(5),
+            PaymentMethods.Cash,
+            "CASH-DEMO-VOID-0001",
+            0m,
+            true,
+            "Cancelled demo order to show void and stock return flow.",
+            new[]
+            {
+                new OrderItemSeed("MBA13-M3-8-256", 1m)
+            },
+            cancellationToken);
+        if (order is not null)
+        {
+            orders.Add((order, true));
+        }
+
+        if (hcm02Open is not null && hcm02Open.StoreId == hcm02.Id && hcm02Open.OpenedBy == staff01.Id)
+        {
+            order = await EnsureDemoOrderAsync(
+                db,
+                tenant,
+                owner,
+                hcm02,
+                staff01,
+                hcm02Open,
+                storeProducts,
+                "POS-DEMO-OPEN-0001",
+                businessDay.AddHours(3).AddMinutes(45),
+                PaymentMethods.Cash,
+                "CASH-DEMO-OPEN-0001",
+                0m,
+                false,
+                "Live open-shift checkout for staff demo account.",
+                new[]
+                {
+                    new OrderItemSeed("ANKER-737-24K", 1m)
+                },
+                cancellationToken);
+            if (order is not null)
+            {
+                orders.Add((order, false));
+            }
+        }
+
+        await UpdateShiftCashSummaryAsync(db, hcm01Yesterday, cancellationToken);
+        await UpdateShiftCashSummaryAsync(db, hcm01Today, cancellationToken);
+        await UpdateShiftCashSummaryAsync(db, hcm02Yesterday, cancellationToken);
+
+        await EnsureShiftAuditLogsAsync(db, hcm01Yesterday, staff01.Id, cancellationToken);
+        await EnsureShiftAuditLogsAsync(db, hcm01Today, staff02.Id, cancellationToken);
+        await EnsureShiftAuditLogsAsync(db, hcm02Yesterday, staff01.Id, cancellationToken);
+        if (hcm02Open is not null && hcm02Open.OpenedBy == staff01.Id)
+        {
+            await EnsureShiftAuditLogsAsync(db, hcm02Open, staff01.Id, cancellationToken);
+        }
+
+        foreach (var (demoOrder, isCancelled) in orders)
+        {
+            await EnsureAuditLogAsync(
+                db,
+                "CreateOrder",
+                nameof(Order),
+                demoOrder.Id.ToString(),
+                demoOrder.CreatedBy ?? owner.Id,
+                demoOrder.TenantId,
+                demoOrder.StoreId,
+                $"OrderCode={demoOrder.OrderCode}; Total={demoOrder.TotalAmount:#,##0.##}; Status={demoOrder.OrderStatus}",
+                cancellationToken);
+
+            if (isCancelled)
+            {
+                await EnsureAuditLogAsync(
+                    db,
+                    "CancelOrder",
+                    nameof(Order),
+                    demoOrder.Id.ToString(),
+                    demoOrder.CancelledBy ?? demoOrder.CreatedBy ?? owner.Id,
+                    demoOrder.TenantId,
+                    demoOrder.StoreId,
+                    $"OrderCode={demoOrder.OrderCode}; PaymentStatus={demoOrder.PaymentStatus}",
+                    cancellationToken);
+            }
+        }
+    }
+
+    private static async Task<Shift> EnsureDemoShiftAsync(
+        StoreFlowDbContext db,
+        Tenant tenant,
+        Store store,
+        AspNetUser openedBy,
+        DateTime openedAt,
+        DateTime? closedAt,
+        decimal openingCash,
+        decimal? closingCash,
+        CancellationToken cancellationToken)
+    {
+        var status = closedAt.HasValue ? ShiftStatuses.Closed : ShiftStatuses.Open;
+        var shift = await db.Shifts.FirstOrDefaultAsync(
+            x => x.TenantId == tenant.Id
+                && x.StoreId == store.Id
+                && x.OpenedBy == openedBy.Id
+                && x.OpenedAt == openedAt,
+            cancellationToken);
+
+        if (shift is null)
+        {
+            shift = new Shift
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenant.Id,
+                StoreId = store.Id,
+                OpenedBy = openedBy.Id,
+                OpenedAt = openedAt,
+                ClosedBy = closedAt.HasValue ? openedBy.Id : null,
+                ClosedAt = closedAt,
+                OpeningCash = openingCash,
+                ClosingCash = closingCash,
+                Status = status
+            };
+            db.Shifts.Add(shift);
+        }
+        else
+        {
+            shift.OpeningCash = openingCash;
+            shift.ClosedBy = closedAt.HasValue ? openedBy.Id : null;
+            shift.ClosedAt = closedAt;
+            shift.ClosingCash = closingCash;
+            shift.Status = status;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return shift;
+    }
+
+    private static async Task<Shift?> EnsureDemoOpenShiftAsync(
+        StoreFlowDbContext db,
+        Tenant tenant,
+        Store store,
+        AspNetUser openedBy,
+        DateTime openedAt,
+        decimal openingCash,
+        CancellationToken cancellationToken)
+    {
+        var existingOpenShift = await db.Shifts.FirstOrDefaultAsync(
+            x => x.TenantId == tenant.Id
+                && x.OpenedBy == openedBy.Id
+                && x.Status == ShiftStatuses.Open,
+            cancellationToken);
+        if (existingOpenShift is not null)
+        {
+            return existingOpenShift;
+        }
+
+        return await EnsureDemoShiftAsync(
+            db,
+            tenant,
+            store,
+            openedBy,
+            openedAt,
+            null,
+            openingCash,
+            null,
+            cancellationToken);
+    }
+
+    private static async Task<Order?> EnsureDemoOrderAsync(
+        StoreFlowDbContext db,
+        Tenant tenant,
+        AspNetUser owner,
+        Store store,
+        AspNetUser staffUser,
+        Shift shift,
+        IReadOnlyDictionary<string, StoreProduct> storeProducts,
+        string orderCode,
+        DateTime createdAt,
+        string paymentMethod,
+        string transactionCode,
+        decimal discountAmount,
+        bool isCancelled,
+        string note,
+        IReadOnlyList<OrderItemSeed> items,
+        CancellationToken cancellationToken)
+    {
+        if (shift.StoreId != store.Id)
+        {
+            return null;
+        }
+
+        var existingOrder = await db.Orders.FirstOrDefaultAsync(
+            x => x.TenantId == tenant.Id && x.OrderCode == orderCode,
+            cancellationToken);
+        if (existingOrder is not null)
+        {
+            return existingOrder;
+        }
+
+        var resolvedItems = new List<ResolvedOrderItemSeed>();
+        foreach (var item in items)
+        {
+            if (!storeProducts.TryGetValue($"{store.Code}:{item.Sku}", out var storeProduct))
+            {
+                return null;
+            }
+
+            var product = await db.Products
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.TenantId == tenant.Id && x.Id == storeProduct.ProductId, cancellationToken);
+            if (product is null)
+            {
+                return null;
+            }
+
+            var unitPrice = storeProduct.SellingPrice ?? product.Price;
+            resolvedItems.Add(new ResolvedOrderItemSeed(
+                product.Id,
+                product.Name,
+                product.Sku,
+                item.Quantity,
+                unitPrice,
+                unitPrice * item.Quantity));
+        }
+
+        var subTotal = resolvedItems.Sum(x => x.LineTotal);
+        if (discountAmount < 0m || discountAmount > subTotal)
+        {
+            return null;
+        }
+
+        var totalAmount = subTotal - discountAmount;
+
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var order = new Order
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenant.Id,
+            StoreId = store.Id,
+            OrderCode = orderCode,
+            StaffUserId = staffUser.Id,
+            ShiftId = shift.Id,
+            SubTotal = subTotal,
+            DiscountAmount = discountAmount,
+            TaxAmount = 0m,
+            TotalAmount = totalAmount,
+            PaymentStatus = isCancelled ? OrderPaymentStatuses.Cancelled : OrderPaymentStatuses.Paid,
+            OrderStatus = isCancelled ? OrderStatuses.Cancelled : OrderStatuses.Completed,
+            Note = note,
+            CreatedAt = createdAt,
+            CreatedBy = staffUser.Id,
+            UpdatedAt = isCancelled ? createdAt.AddMinutes(20) : null,
+            UpdatedBy = isCancelled ? staffUser.Id : null,
+            CancelledAt = isCancelled ? createdAt.AddMinutes(20) : null,
+            CancelledBy = isCancelled ? staffUser.Id : null
+        };
+        db.Orders.Add(order);
+
+        foreach (var item in resolvedItems)
+        {
+            db.OrderItems.Add(new OrderItem
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenant.Id,
+                OrderId = order.Id,
+                ProductId = item.ProductId,
+                ProductName = item.ProductName,
+                Sku = item.Sku,
+                Quantity = item.Quantity,
+                UnitPrice = item.UnitPrice,
+                DiscountAmount = 0m,
+                LineTotal = item.LineTotal
+            });
+
+            var inventory = await EnsureInventoryCanSellAsync(
+                db,
+                tenant,
+                owner,
+                store,
+                item.ProductId,
+                item.Quantity,
+                createdAt,
+                cancellationToken);
+
+            var beforeSale = inventory.Quantity;
+            inventory.Quantity -= item.Quantity;
+            inventory.UpdatedAt = createdAt;
+            inventory.UpdatedBy = staffUser.Id;
+            db.InventoryTransactions.Add(new InventoryTransaction
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenant.Id,
+                StoreId = store.Id,
+                ProductId = item.ProductId,
+                Type = InventoryTransactionTypes.Sale,
+                Quantity = item.Quantity,
+                BeforeQuantity = beforeSale,
+                AfterQuantity = inventory.Quantity,
+                Reason = $"Seed POS sale {orderCode}",
+                ReferenceType = nameof(Order),
+                ReferenceId = order.Id.ToString(),
+                CreatedBy = staffUser.Id,
+                CreatedAt = createdAt
+            });
+
+            if (isCancelled)
+            {
+                var beforeReturn = inventory.Quantity;
+                inventory.Quantity += item.Quantity;
+                inventory.UpdatedAt = createdAt.AddMinutes(20);
+                inventory.UpdatedBy = staffUser.Id;
+                db.InventoryTransactions.Add(new InventoryTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenant.Id,
+                    StoreId = store.Id,
+                    ProductId = item.ProductId,
+                    Type = InventoryTransactionTypes.Return,
+                    Quantity = item.Quantity,
+                    BeforeQuantity = beforeReturn,
+                    AfterQuantity = inventory.Quantity,
+                    Reason = $"Seed cancel order {orderCode}",
+                    ReferenceType = nameof(Order),
+                    ReferenceId = order.Id.ToString(),
+                    CreatedBy = staffUser.Id,
+                    CreatedAt = createdAt.AddMinutes(20)
+                });
+            }
+        }
+
+        db.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenant.Id,
+            OrderId = order.Id,
+            Method = paymentMethod,
+            Amount = totalAmount,
+            TransactionCode = transactionCode,
+            PaidAt = createdAt,
+            Status = isCancelled ? PaymentStatuses.Cancelled : PaymentStatuses.Paid,
+            CreatedAt = createdAt
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return order;
+    }
+
+    private static async Task<ChainPOS.Models.Inventory> EnsureInventoryCanSellAsync(
+        StoreFlowDbContext db,
+        Tenant tenant,
+        AspNetUser owner,
+        Store store,
+        Guid productId,
+        decimal quantity,
+        DateTime createdAt,
+        CancellationToken cancellationToken)
+    {
+        var inventory = await db.Inventories.FirstOrDefaultAsync(
+            x => x.TenantId == tenant.Id && x.StoreId == store.Id && x.ProductId == productId,
+            cancellationToken);
+        if (inventory is null)
+        {
+            inventory = new ChainPOS.Models.Inventory
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenant.Id,
+                StoreId = store.Id,
+                ProductId = productId,
+                Quantity = 0m,
+                MinQuantity = 0m,
+                UpdatedAt = createdAt.AddMinutes(-5),
+                UpdatedBy = owner.Id
+            };
+            db.Inventories.Add(inventory);
+        }
+
+        if (inventory.Quantity >= quantity)
+        {
+            return inventory;
+        }
+
+        var before = inventory.Quantity;
+        var topUpQuantity = quantity - inventory.Quantity + 5m;
+        inventory.Quantity += topUpQuantity;
+        inventory.UpdatedAt = createdAt.AddMinutes(-5);
+        inventory.UpdatedBy = owner.Id;
+        db.InventoryTransactions.Add(new InventoryTransaction
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenant.Id,
+            StoreId = store.Id,
+            ProductId = productId,
+            Type = InventoryTransactionTypes.Import,
+            Quantity = topUpQuantity,
+            BeforeQuantity = before,
+            AfterQuantity = inventory.Quantity,
+            Reason = "Seed POS stock top-up",
+            ReferenceType = "Seed",
+            ReferenceId = $"Phase7:{store.Code}",
+            CreatedBy = owner.Id,
+            CreatedAt = createdAt.AddMinutes(-5)
+        });
+
+        return inventory;
+    }
+
+    private static async Task UpdateShiftCashSummaryAsync(
+        StoreFlowDbContext db,
+        Shift shift,
+        CancellationToken cancellationToken)
+    {
+        if (shift.Status != ShiftStatuses.Closed)
+        {
+            return;
+        }
+
+        var cashSales = await db.Payments
+            .Where(x => x.Method == PaymentMethods.Cash
+                && x.Status == PaymentStatuses.Paid
+                && x.Order.ShiftId == shift.Id
+                && x.Order.OrderStatus != OrderStatuses.Cancelled)
+            .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0m;
+
+        var expectedCash = shift.OpeningCash + cashSales;
+        shift.ExpectedCash = expectedCash;
+        shift.ClosingCash ??= expectedCash;
+        shift.DifferenceAmount = shift.ClosingCash - expectedCash;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task EnsureShiftAuditLogsAsync(
+        StoreFlowDbContext db,
+        Shift shift,
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        await EnsureAuditLogAsync(
+            db,
+            "OpenShift",
+            nameof(Shift),
+            shift.Id.ToString(),
+            shift.OpenedBy,
+            shift.TenantId,
+            shift.StoreId,
+            $"OpeningCash={shift.OpeningCash:#,##0.##}; Status={shift.Status}",
+            cancellationToken);
+
+        if (shift.Status == ShiftStatuses.Closed)
+        {
+            await EnsureAuditLogAsync(
+                db,
+                "CloseShift",
+                nameof(Shift),
+                shift.Id.ToString(),
+                shift.ClosedBy ?? userId,
+                shift.TenantId,
+                shift.StoreId,
+                $"ClosingCash={shift.ClosingCash:#,##0.##}; ExpectedCash={shift.ExpectedCash:#,##0.##}; Difference={shift.DifferenceAmount:#,##0.##}",
+                cancellationToken);
+        }
+    }
+
     private static async Task EnsureExtraOwnerTenantsAsync(
         StoreFlowDbContext db,
         PasswordHasher<AspNetUser> passwordHasher,
@@ -810,6 +1528,18 @@ public static class DevelopmentDataSeeder
         bool IsActive);
 
     private sealed record StoreProductSeed(string StoreCode, string Sku, decimal? SellingPrice, bool IsAvailable);
+
+    private sealed record InventorySeed(string StoreProductKey, decimal Quantity, decimal MinQuantity);
+
+    private sealed record OrderItemSeed(string Sku, decimal Quantity);
+
+    private sealed record ResolvedOrderItemSeed(
+        Guid ProductId,
+        string ProductName,
+        string? Sku,
+        decimal Quantity,
+        decimal UnitPrice,
+        decimal LineTotal);
 
     private sealed record OwnerTenantSeed(
         string Email,

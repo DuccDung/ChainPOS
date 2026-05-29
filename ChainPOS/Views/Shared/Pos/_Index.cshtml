@@ -1,0 +1,256 @@
+@using ChainPOS.Constants
+@using System.Globalization
+@model ChainPOS.ViewModels.Sales.PosIndexViewModel
+
+<div class="flex flex-col gap-5">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-gray-400 mb-0.5">
+                <a asp-area="@Model.AreaName" asp-controller="Dashboard" asp-action="Index" class="hover:text-orange-500">Dashboard</a>
+                <span>/</span><span class="text-gray-600 font-medium">Sales</span>
+                <span>/</span><span class="text-orange-500 font-medium">POS</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">POS Checkout</h1>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            @if (Model.StoreId.HasValue)
+            {
+                <a asp-area="@Model.AreaName" asp-controller="Shifts" asp-action="Open" asp-route-storeId="@Model.StoreId" class="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-700 hover:bg-orange-100">Open Shift</a>
+            }
+            <a asp-area="@Model.AreaName" asp-controller="Orders" asp-action="Index" asp-route-storeId="@Model.StoreId" class="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:border-orange-200 hover:text-orange-600">Orders</a>
+        </div>
+    </div>
+
+    @if (!Model.OpenShiftId.HasValue)
+    {
+        <div class="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start gap-3">
+            <div class="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            </div>
+            <div>
+                <p class="font-semibold text-amber-800 text-sm">Open shift required</p>
+                <p class="text-xs text-amber-600 mt-0.5">You can browse products, but checkout is blocked until your current user has an open shift at the selected store.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-start gap-3">
+            <div class="w-8 h-8 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+            </div>
+            <div>
+                <p class="font-semibold text-green-800 text-sm">Open shift active</p>
+                <p class="text-xs text-green-600 mt-0.5">@Model.OpenShiftStoreName opened at @(Model.OpenShiftOpenedAt.HasValue ? Model.OpenShiftOpenedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "-").</p>
+            </div>
+        </div>
+    }
+
+    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px] gap-5">
+        <div class="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between px-5 py-4 gap-3 border-b border-gray-50">
+                <div>
+                    <h3 class="font-bold text-gray-900">Available Products</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">Showing @Model.Products.Count product(s)</p>
+                </div>
+                <form asp-area="@Model.AreaName" asp-controller="Pos" asp-action="Index" method="get" class="flex items-center gap-2 flex-wrap">
+                    <select asp-for="StoreId" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 text-gray-600">
+                        @foreach (var store in Model.Stores)
+                        {
+                            <option value="@store.Id">@store.Name (@store.Code)</option>
+                        }
+                    </select>
+                    <div class="relative">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" /></svg>
+                        <input asp-for="Search" placeholder="Name, SKU, barcode..." class="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 w-56" />
+                    </div>
+                    <button type="submit" class="px-4 py-2 bg-orange-500 text-white text-sm font-semibold rounded-xl hover:bg-orange-600">Search</button>
+                </form>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3 p-5">
+                @if (Model.Products.Count == 0)
+                {
+                    <div class="md:col-span-2 2xl:col-span-3 py-16 text-center text-sm text-gray-400">No sellable products found.</div>
+                }
+                else
+                {
+                    foreach (var product in Model.Products)
+                    {
+                        var disabled = product.QuantityOnHand <= 0;
+                        <button type="button"
+                                class="product-card text-left rounded-2xl border @(disabled ? "border-gray-100 bg-gray-50 opacity-60" : "border-orange-100 bg-white hover:border-orange-300 hover:shadow-md") p-4 transition-all"
+                                data-product-id="@product.ProductId"
+                                data-name="@product.Name"
+                                data-sku="@(product.Sku ?? "")"
+                                data-price="@product.Price.ToString(CultureInfo.InvariantCulture)"
+                                data-stock="@product.QuantityOnHand.ToString(CultureInfo.InvariantCulture)"
+                                @(disabled ? "disabled" : "")>
+                            <div class="flex items-start gap-3">
+                                @if (!string.IsNullOrWhiteSpace(product.ImageUrl))
+                                {
+                                    <img src="@product.ImageUrl" alt="@product.Name" class="w-12 h-12 rounded-xl object-cover border border-orange-100 flex-shrink-0" />
+                                }
+                                else
+                                {
+                                    <div class="w-12 h-12 bg-gradient-to-br from-orange-400 to-amber-400 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0">@product.Name[0]</div>
+                                }
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-semibold text-gray-900 text-sm truncate">@product.Name</p>
+                                    <p class="text-xs text-gray-400 font-mono">@(product.Sku ?? "No SKU")</p>
+                                    <div class="mt-2 flex items-center justify-between gap-2">
+                                        <span class="font-bold text-orange-600">@product.Price.ToString("#,##0.##")</span>
+                                        <span class="text-xs @(product.IsLowStock ? "text-amber-600" : "text-gray-400")">Stock @product.QuantityOnHand.ToString("#,##0.###")</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </button>
+                    }
+                }
+            </div>
+        </div>
+
+        <form id="checkoutForm" asp-area="@Model.AreaName" asp-controller="Pos" asp-action="Checkout" method="post" class="bg-white rounded-2xl border border-orange-100 shadow-sm h-fit overflow-hidden">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="AreaName" value="@Model.AreaName" />
+            <input type="hidden" name="StoreId" value="@Model.StoreId" />
+            <div id="cartInputs"></div>
+            <div class="px-5 py-4 border-b border-gray-50">
+                <h3 class="font-bold text-gray-900">Cart</h3>
+                <p class="text-xs text-gray-400 mt-0.5"><span id="cartCount">0</span> item(s)</p>
+            </div>
+            <div id="cartRows" class="divide-y divide-gray-50 min-h-40"></div>
+            <div class="p-5 space-y-3 border-t border-gray-50">
+                <div class="flex justify-between text-sm"><span class="text-gray-500">Subtotal</span><span class="font-semibold text-gray-900" id="subtotalText">0</span></div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Discount</label>
+                    <input id="discountInput" name="DiscountAmount" type="number" step="0.01" min="0" value="0" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" />
+                </div>
+                <div class="flex justify-between text-sm"><span class="text-gray-500">Tax</span><span class="font-semibold text-gray-900" id="taxText">0</span></div>
+                <div class="flex justify-between text-lg border-t border-gray-100 pt-3"><span class="font-bold text-gray-900">Total</span><span class="font-bold text-orange-600" id="totalText">0</span></div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Payment Method</label>
+                    <select name="PaymentMethod" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white">
+                        <option value="@PaymentMethods.Cash">Cash</option>
+                        <option value="@PaymentMethods.Card">Card</option>
+                        <option value="@PaymentMethods.BankTransfer">Bank Transfer</option>
+                        <option value="@PaymentMethods.Momo">Momo</option>
+                        <option value="@PaymentMethods.ZaloPay">ZaloPay</option>
+                        <option value="@PaymentMethods.Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Customer Paid</label>
+                    <input id="paidInput" name="CustomerPaidAmount" type="number" step="0.01" min="0" value="0" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" />
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Transaction Code</label>
+                    <input name="TransactionCode" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" />
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Note</label>
+                    <textarea name="Note" rows="2" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"></textarea>
+                </div>
+                <button type="submit" @(Model.CanCheckout ? "" : "disabled") class="w-full py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-sm font-semibold rounded-xl hover:from-orange-600 hover:to-amber-600 disabled:opacity-40 disabled:cursor-not-allowed">Checkout</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+        (() => {
+            const cart = new Map();
+            const rows = document.getElementById('cartRows');
+            const inputs = document.getElementById('cartInputs');
+            const count = document.getElementById('cartCount');
+            const subtotalText = document.getElementById('subtotalText');
+            const taxText = document.getElementById('taxText');
+            const totalText = document.getElementById('totalText');
+            const discountInput = document.getElementById('discountInput');
+            const paidInput = document.getElementById('paidInput');
+            const money = new Intl.NumberFormat('vi-VN');
+
+            function addProduct(button) {
+                const id = button.dataset.productId;
+                const stock = Number(button.dataset.stock || '0');
+                const existing = cart.get(id);
+                const quantity = existing ? existing.quantity + 1 : 1;
+                if (quantity > stock) return;
+                cart.set(id, {
+                    id,
+                    name: button.dataset.name,
+                    sku: button.dataset.sku,
+                    price: Number(button.dataset.price || '0'),
+                    stock,
+                    quantity
+                });
+                render();
+            }
+
+            function render() {
+                const items = Array.from(cart.values());
+                count.textContent = items.reduce((sum, item) => sum + item.quantity, 0).toString();
+                rows.innerHTML = items.length
+                    ? items.map(item => `
+                        <div class="p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-gray-900 text-sm truncate">${item.name}</p>
+                                    <p class="text-xs text-gray-400 font-mono">${item.sku || '-'}</p>
+                                    <p class="text-xs text-orange-600 font-semibold mt-1">${money.format(item.price)}</p>
+                                </div>
+                                <button type="button" class="remove-item text-gray-300 hover:text-red-500" data-id="${item.id}">x</button>
+                            </div>
+                            <div class="mt-3 flex items-center justify-between">
+                                <div class="flex items-center gap-1">
+                                    <button type="button" class="qty-btn w-8 h-8 rounded-lg border border-gray-200 text-gray-500" data-id="${item.id}" data-delta="-1">-</button>
+                                    <span class="w-10 text-center font-semibold text-gray-900">${item.quantity}</span>
+                                    <button type="button" class="qty-btn w-8 h-8 rounded-lg border border-gray-200 text-gray-500" data-id="${item.id}" data-delta="1">+</button>
+                                </div>
+                                <span class="font-bold text-gray-900">${money.format(item.price * item.quantity)}</span>
+                            </div>
+                        </div>`).join('')
+                    : '<div class="py-14 text-center text-sm text-gray-400">Cart is empty.</div>';
+                inputs.innerHTML = items.map((item, index) => `
+                    <input type="hidden" name="Items[${index}].ProductId" value="${item.id}" />
+                    <input type="hidden" name="Items[${index}].Quantity" value="${item.quantity}" />`).join('');
+                const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+                const discount = Math.max(0, Number(discountInput.value || '0'));
+                const tax = 0;
+                const total = Math.max(0, subtotal - discount + tax);
+                subtotalText.textContent = money.format(subtotal);
+                taxText.textContent = money.format(tax);
+                totalText.textContent = money.format(total);
+                if (Number(paidInput.value || '0') === 0) {
+                    paidInput.value = total.toFixed(2);
+                }
+            }
+
+            document.querySelectorAll('.product-card').forEach(button => {
+                button.addEventListener('click', () => addProduct(button));
+            });
+            rows.addEventListener('click', event => {
+                const qtyButton = event.target.closest('.qty-btn');
+                if (qtyButton) {
+                    const item = cart.get(qtyButton.dataset.id);
+                    if (!item) return;
+                    item.quantity += Number(qtyButton.dataset.delta);
+                    if (item.quantity <= 0) cart.delete(item.id);
+                    if (item.quantity > item.stock) item.quantity = item.stock;
+                    render();
+                }
+                const remove = event.target.closest('.remove-item');
+                if (remove) {
+                    cart.delete(remove.dataset.id);
+                    render();
+                }
+            });
+            discountInput.addEventListener('input', render);
+            document.getElementById('checkoutForm').addEventListener('submit', event => {
+                if (cart.size === 0) {
+                    event.preventDefault();
+                    alert('Cart is empty.');
+                }
+            });
+            render();
+        })();
+    </script>

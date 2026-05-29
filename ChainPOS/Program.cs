@@ -6,7 +6,10 @@ using ChainPOS.Services.Audit;
 using ChainPOS.Services.Auth;
 using ChainPOS.Services.Common;
 using ChainPOS.Services.Dashboard;
+using ChainPOS.Services.Inventory;
 using ChainPOS.Services.Owner;
+using ChainPOS.Services.Reports;
+using ChainPOS.Services.Sales;
 using ChainPOS.Services.Security;
 using ChainPOS.Services.Seed;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -35,6 +38,11 @@ builder.Services.AddScoped<IOwnerStaffService, OwnerStaffService>();
 builder.Services.AddScoped<IOwnerCategoryService, OwnerCategoryService>();
 builder.Services.AddScoped<IOwnerProductService, OwnerProductService>();
 builder.Services.AddScoped<IOwnerStoreProductService, OwnerStoreProductService>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IShiftService, ShiftService>();
+builder.Services.AddScoped<IPosService, PosService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

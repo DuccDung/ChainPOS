@@ -1,0 +1,11 @@
+@model ChainPOS.ViewModels.Inventory.InventoryAdjustViewModel
+@{
+    ViewData["Title"] = "Adjust Stock";
+    ViewData["ActiveMenu"] = "inventory";
+}
+
+<partial name="~/Views/Shared/Inventory/_AdjustForm.cshtml" model="Model" />
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

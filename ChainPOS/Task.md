@@ -4,6 +4,172 @@ Cập nhật ngày: 2026-05-29
 
 Tài liệu này là backlog triển khai tiếp theo cho dự án `ChainPOS` sau khi đã scaffold model bằng EF Core từ SQL Server. Trạng thái hiện tại không còn là tạo project từ đầu, mà là phát triển tiếp trên nền database-first đã có.
 
+## 0. AI handoff context hiện tại
+
+Đọc phần này trước khi làm tiếp. Dự án hiện đang ở trạng thái **đã hoàn thành Phase 7: Shift và POS ở mức MVP server-rendered MVC**. Không cần làm lại các phần từ Phase 1 đến Phase 7, trừ khi phát hiện bug khi test hoặc khi hardening.
+
+### 0.1. Trạng thái mới nhất
+
+- [x] Phase 1: Authentication/login 3 role `ADMIN`, `OWNER`, `STAFF`.
+- [x] Phase 2: Layout/dashboard theo role, sidebar/topbar/alert/confirm modal.
+- [x] Phase 3 một phần: Admin quản lý Owner và Tenant.
+- [x] Phase 4: Owner quản lý Store, Staff và gán Staff vào Store.
+- [x] Phase 5: Category, Product, Store Product.
+- [x] Phase 6: Inventory import/export/adjust cho Owner/Staff.
+- [x] Phase 7: Shift, POS checkout, Orders, receipt, cancel order.
+- [x] Phase 8.1: Reports dùng các report views.
+- [ ] Chưa có unit/integration test tự động.
+- [ ] Phase 8.2 Subscription UI và Phase 8.3 Audit viewer chưa làm.
+- [ ] Admin Subscription Plan/System Payment ở Phase 3.3 và 3.4 chưa làm.
+
+### 0.2. Tài khoản demo
+
+- Admin: `admin@chainpos.local` / `Admin@123`
+- Owner: `owner@demo.local` / `Owner@123`
+- Staff: `staff01@demo.local` / `Staff@123`
+
+Seeder development hiện đã có dữ liệu demo cho owner/tenant/store/staff/category/product/store product/inventory. Khi cần test POS, ưu tiên store có product available và inventory còn tồn, ví dụ các store demo `TZ-HCM-01`, `TZ-HCM-02`.
+
+Dữ liệu demo Phase 7 đã được bổ sung trong `DevelopmentDataSeeder` để nhìn trực quan:
+
+- 4 ca bán demo cho `TZ-HCM-01` và `TZ-HCM-02`, gồm ca đã đóng và 1 ca đang mở cho `staff01@demo.local`.
+- 6 đơn POS demo mã `POS-DEMO-*`, gồm đơn hoàn tất, đơn đã hủy và đơn trong ca đang mở.
+- 6 payment demo với các phương thức `Cash`, `Card`, `BankTransfer`, `Momo`.
+- Inventory transaction demo cho `Sale` và `Return`, có top-up tự động nếu tồn kho local không đủ để seed đơn.
+- Audit log demo cho `OpenShift`, `CloseShift`, `CreateOrder`, `CancelOrder`.
+
+### 0.3. Rule bắt buộc khi AI làm tiếp
+
+- Trước khi code phải đọc `rule.md`, `Task.md`, model liên quan và service/controller/view hiện có.
+- UI phải lấy mẫu từ `D:\laptrinhweb\code_outsrc\Dam_Van_Bao\UI`; không tự design lại nếu có mẫu.
+- Code xong phần nào thì tick đúng phần đó trong `Task.md`.
+- Không sửa trực tiếp entity scaffolded trong `Models` nếu không thật sự cần.
+- Không bind entity trực tiếp từ request; dùng ViewModel/InputModel.
+- Owner/Staff phải lọc theo `TenantId`.
+- Staff thao tác theo store phải check `UserStores.IsActive = true` qua `IStoreAccessService`.
+- Action POST phải có antiforgery token và validate lại quyền ở server.
+- Audit log các thao tác quan trọng.
+
+### 0.4. Các module/vùng code quan trọng đã có
+
+- Auth/current user:
+  - `Services/Auth`
+  - `Services/Common/ICurrentUserService.cs`
+  - `Filters/RequireTenantFilter.cs`
+- Store access:
+  - `Services/Security/IStoreAccessService.cs`
+  - `Services/Security/StoreAccessService.cs`
+- Audit:
+  - `Services/Audit/IAuditLogService.cs`
+  - `Services/Audit/AuditLogService.cs`
+- Owner management:
+  - `Services/Owner`
+  - `Areas/Owner/Controllers`
+  - `ViewModels/Owner`
+- Inventory:
+  - `Services/Inventory`
+  - `ViewModels/Inventory`
+  - `Views/Shared/Inventory`
+  - `Areas/Owner/Controllers/InventoryController.cs`
+  - `Areas/Staff/Controllers/InventoryController.cs`
+- Sales/POS vừa làm:
+  - `Services/Sales/IShiftService.cs`, `ShiftService.cs`
+  - `Services/Sales/IPosService.cs`, `PosService.cs`
+  - `Services/Sales/IOrderService.cs`, `OrderService.cs`
+  - `ViewModels/Sales`
+  - `Views/Shared/Shifts`
+  - `Views/Shared/Pos`
+  - `Views/Shared/Orders`
+  - `Areas/Owner/Controllers/ShiftsController.cs`, `PosController.cs`, `OrdersController.cs`
+  - `Areas/Staff/Controllers/ShiftsController.cs`, `PosController.cs`, `OrdersController.cs`
+
+### 0.5. Phase 7 đã triển khai như thế nào
+
+- Shift:
+  - Owner/Staff mở ca tại store có quyền truy cập.
+  - Chặn user mở ca thứ hai khi đang có ca `Open`.
+  - Đóng ca tính `ExpectedCash = OpeningCash + tổng payment cash trong ca`.
+  - Tính `DifferenceAmount = ClosingCash - ExpectedCash`.
+  - Ghi audit `OpenShift`, `CloseShift`.
+- POS:
+  - UI chọn store, search product theo tên/SKU/barcode.
+  - Chỉ lấy product `StoreProducts.IsAvailable = true`, product active, chưa soft delete.
+  - Giá bán dùng `StoreProducts.SellingPrice ?? Products.Price`.
+  - Hiển thị tồn kho từ `Inventories`.
+  - Cart client-side bằng JavaScript nhưng backend vẫn validate lại toàn bộ.
+- Checkout:
+  - Bắt buộc current user có shift `Open` tại store đang bán.
+  - Validate store access.
+  - Validate cart không rỗng.
+  - Validate tồn kho đủ.
+  - Tạo `Order`, `OrderItems`, `Payments`.
+  - Trừ kho trong `Inventories`.
+  - Ghi `InventoryTransactions` type `Sale`.
+  - Ghi audit `CreateOrder`.
+  - Commit bằng database transaction.
+- Orders:
+  - Danh sách theo tenant/store, filter store/status/payment/date/search.
+  - Chi tiết order/receipt, có nút print.
+  - Cancel order đổi `OrderStatus = Cancelled`, `PaymentStatus = Cancelled`.
+  - Cancel order hoàn kho, ghi `InventoryTransactions` type `Return`.
+  - Ghi audit `CancelOrder`.
+
+### 0.6. Đã test gần nhất
+
+Đã chạy:
+
+- `dotnet build .\ChainPOS.sln` thành công, 0 warning, 0 error.
+- App chạy tại `http://localhost:5292`.
+- HTTP smoke test:
+  - Owner mở/đóng ca được.
+  - Owner mở ca lần hai bị chặn.
+  - Staff mở/đóng ca được.
+  - Staff mở ca lần hai bị chặn.
+  - Staff checkout khi chưa có ca mở bị chặn.
+  - POS checkout quá tồn kho bị chặn.
+  - Checkout tạo order và redirect sang receipt.
+  - Cancel order hoàn kho đúng.
+  - DB có audit `OpenShift`, `CloseShift`, `CreateOrder`, `CancelOrder`.
+  - DB có inventory transaction `Sale`, `Return`.
+
+Sau Phase 8.1 Reports đã chạy:
+
+- `dotnet build .\ChainPOS\ChainPOS.csproj --no-restore -o .\artifacts\report-build` thành công, 0 warning, 0 error.
+- HTTP smoke test tại `http://localhost:5293`:
+  - Admin đăng nhập được và truy cập `/admin/reports` trả 200.
+  - Owner đăng nhập được và truy cập `/owner/reports` trả 200.
+  - Owner report không hiển thị System Revenue Report.
+
+Sau khi bổ sung dữ liệu demo Phase 7 đã chạy:
+
+- `dotnet build .\ChainPOS.sln` thành công, 0 warning, 0 error.
+- Chạy app Development để seeder ghi dữ liệu vào database local.
+- Query database xác nhận có 4 shift demo, 6 order `POS-DEMO-*`, 6 payment demo, 9 transaction `Sale` và 1 transaction `Return`.
+
+Lưu ý: smoke test có thể để lại dữ liệu ca/order đã đóng/cancel trong database local. Đây là dữ liệu test hợp lệ, không tự ý xóa nếu người dùng không yêu cầu.
+
+### 0.7. Việc nên làm tiếp theo
+
+Ưu tiên tiếp theo là **Phase 8.3 Audit log viewer**. Phase 8.1 Reports đã có màn Admin/Owner dùng các report view.
+
+1. Admin xem toàn bộ audit log.
+2. Owner chỉ xem audit log trong tenant của mình.
+3. Filter audit theo user, store, action, thời gian.
+
+Sau Audit log viewer, làm tiếp:
+
+1. Phase 7 hardening: thêm unit/integration test cho shift, checkout, cancel order.
+2. Subscription UI và lịch sử thanh toán SaaS.
+3. Admin Subscription Plan/System Payment còn thiếu.
+
+### 0.8. Mẫu UI nên dùng khi làm tiếp
+
+- Reports: `D:\laptrinhweb\code_outsrc\Dam_Van_Bao\UI\reports.html`
+- Audit logs: `D:\laptrinhweb\code_outsrc\Dam_Van_Bao\UI\audit-logs.html`
+- Orders/receipt: `D:\laptrinhweb\code_outsrc\Dam_Van_Bao\UI\orders.html`, `invoices.html`
+- Inventory: `D:\laptrinhweb\code_outsrc\Dam_Van_Bao\UI\stock.html`
+- Dashboard/layout: `D:\laptrinhweb\code_outsrc\Dam_Van_Bao\UI\dashboard.html`
+
 ## 1. Hiện trạng dự án
 
 ### 1.1. Project hiện tại
@@ -466,96 +632,147 @@ Mục tiêu: quản lý tồn kho đúng rule, có lịch sử giao dịch kho.
 
 ### 10.1. Inventory views
 
-- [ ] Tạo `Areas/Owner/Controllers/InventoryController`.
-- [ ] Tạo `Areas/Staff/Controllers/InventoryController`.
-- [ ] Danh sách tồn kho theo tenant/store.
-- [ ] Low stock dựa trên `Quantity <= MinQuantity`.
-- [ ] Dùng `VwInventoryStatusReports` cho report nếu phù hợp.
+- [x] Tạo `Areas/Owner/Controllers/InventoryController`.
+- [x] Tạo `Areas/Staff/Controllers/InventoryController`.
+- [x] Danh sách tồn kho theo tenant/store.
+- [x] Low stock dựa trên `Quantity <= MinQuantity`.
+- [x] Dùng `VwInventoryStatusReports` cho report nếu phù hợp.
 
 ### 10.2. Import stock
 
-- [ ] Check store access.
-- [ ] Validate product thuộc tenant.
-- [ ] Validate product available tại store nếu cần.
-- [ ] Validate quantity > 0.
-- [ ] Tạo `Inventory` nếu chưa có.
-- [ ] Tính `BeforeQuantity`.
-- [ ] Cập nhật `Quantity`.
-- [ ] Tính `AfterQuantity`.
-- [ ] Ghi `InventoryTransactions` type `Import`.
-- [ ] Ghi audit log.
-- [ ] Dùng database transaction.
+- [x] Check store access.
+- [x] Validate product thuộc tenant.
+- [x] Validate product available tại store nếu cần.
+- [x] Validate quantity > 0.
+- [x] Tạo `Inventory` nếu chưa có.
+- [x] Tính `BeforeQuantity`.
+- [x] Cập nhật `Quantity`.
+- [x] Tính `AfterQuantity`.
+- [x] Ghi `InventoryTransactions` type `Import`.
+- [x] Ghi audit log.
+- [x] Dùng database transaction.
 
 ### 10.3. Export stock
 
-- [ ] Check store access.
-- [ ] Validate quantity > 0.
-- [ ] Validate tồn đủ.
-- [ ] Cập nhật `Inventory`.
-- [ ] Ghi `InventoryTransactions` type `Export`.
-- [ ] Ghi audit log.
-- [ ] Dùng database transaction.
+- [x] Check store access.
+- [x] Validate quantity > 0.
+- [x] Validate tồn đủ.
+- [x] Cập nhật `Inventory`.
+- [x] Ghi `InventoryTransactions` type `Export`.
+- [x] Ghi audit log.
+- [x] Dùng database transaction.
 
 ### 10.4. Adjust stock
 
-- [ ] Check store access.
-- [ ] Validate actual quantity >= 0.
-- [ ] Validate reason bắt buộc.
-- [ ] Cập nhật `Inventory`.
-- [ ] Ghi `InventoryTransactions` type `Adjust`.
-- [ ] Ghi audit log.
-- [ ] Dùng database transaction.
+- [x] Check store access.
+- [x] Validate actual quantity >= 0.
+- [x] Validate reason bắt buộc.
+- [x] Cập nhật `Inventory`.
+- [x] Ghi `InventoryTransactions` type `Adjust`.
+- [x] Ghi audit log.
+- [x] Dùng database transaction.
 
 ## 11. Phase 7: Shift và POS
 
 Mục tiêu: staff mở ca, bán hàng, thanh toán, trừ kho, in hóa đơn.
 
-### 11.1. Shift
+Quy ước triển khai Phase 7:
 
-- [ ] Tạo `Areas/Owner/Controllers/ShiftsController`.
-- [ ] Tạo `Areas/Staff/Controllers/ShiftsController`.
-- [ ] Open shift.
-- [ ] Close shift.
-- [ ] Validate `OpeningCash >= 0`.
-- [ ] Tính `ExpectedCash` từ payment cash trong ca.
-- [ ] Tính `DifferenceAmount`.
-- [ ] Không cho user mở nhiều ca cùng lúc nếu nghiệp vụ yêu cầu.
-- [ ] Ghi audit log.
+- Làm theo thứ tự: `Shift` -> `POS UI/cart` -> `Checkout backend` -> `Orders/receipt/cancel`.
+- POS checkout phải yêu cầu user có ca `Open` hợp lệ trước khi tạo đơn.
+- Mọi thao tác theo store của `OWNER`/`STAFF` vẫn phải lọc `TenantId` và check store access.
+- UI phải ưu tiên lấy mẫu từ `D:\laptrinhweb\code_outsrc\Dam_Van_Bao\UI`, đặc biệt `dashboard.html`, `stock.html`, `orders.html`, `invoices.html`.
+- Backend không tin giá, tồn kho, tổng tiền gửi từ client; phải tự tính lại trên server.
 
-### 11.2. POS
+### 11.1. Shift foundation
 
-- [ ] Tạo `Areas/Owner/Controllers/PosController`.
-- [ ] Tạo `Areas/Staff/Controllers/PosController`.
-- [ ] UI chọn store.
-- [ ] UI danh sách product available tại store.
-- [ ] Search product theo tên, SKU, barcode.
-- [ ] Cart client-side bằng JavaScript.
-- [ ] Backend validate lại toàn bộ cart.
-- [ ] Backend tự tính giá, subtotal, discount, tax, total.
-- [ ] Validate tồn kho đủ.
-- [ ] Tạo `Order`.
-- [ ] Tạo `OrderItems`.
-- [ ] Tạo `Payments`.
-- [ ] Trừ kho trong `Inventories`.
-- [ ] Ghi `InventoryTransactions` type `Sale`.
-- [ ] Cập nhật `Orders.PaymentStatus`.
-- [ ] Ghi audit log `CreateOrder`.
-- [ ] Commit bằng database transaction.
+- [x] Tạo ViewModel/InputModel cho shift: list, open, close.
+- [x] Tạo `IShiftService` và `ShiftService`.
+- [x] Tạo `Areas/Owner/Controllers/ShiftsController`.
+- [x] Tạo `Areas/Staff/Controllers/ShiftsController`.
+- [x] Màn danh sách ca theo tenant/store.
+- [x] Màn xem ca đang mở của user hiện tại.
+- [x] Open shift cho Owner/Staff.
+- [x] Validate `OpeningCash >= 0`.
+- [x] Check store access trước khi mở ca.
+- [x] Không cho cùng user mở nhiều ca `Open` cùng lúc.
+- [x] Ghi audit log `OpenShift`.
+- [x] Close shift cho Owner/Staff.
+- [x] Validate `ClosingCash >= 0`.
+- [x] Tính `ExpectedCash` = `OpeningCash` + tổng payment cash trong ca.
+- [x] Tính `DifferenceAmount = ClosingCash - ExpectedCash`.
+- [x] Cập nhật `ClosedAt`, `ClosingCash`, `ExpectedCash`, `DifferenceAmount`, `Status = Closed`.
+- [x] Ghi audit log `CloseShift`.
 
-### 11.3. Order
+### 11.2. POS UI và cart
 
-- [ ] Tạo `Areas/Owner/Controllers/OrdersController`.
-- [ ] Tạo `Areas/Staff/Controllers/OrdersController`.
-- [ ] Danh sách order theo tenant/store.
-- [ ] Xem chi tiết order.
-- [ ] In receipt.
-- [ ] Cancel order.
-- [ ] Khi cancel, cập nhật `OrderStatus = Cancelled`.
-- [ ] Cập nhật `CancelledAt`, `CancelledBy`.
-- [ ] Hoàn kho nếu order đã trừ kho.
-- [ ] Ghi `InventoryTransactions` type `Return`.
-- [ ] Cập nhật payment nếu cần.
-- [ ] Ghi audit log `CancelOrder`.
+- [x] Tạo `Areas/Owner/Controllers/PosController`.
+- [x] Tạo `Areas/Staff/Controllers/PosController`.
+- [x] Tạo ViewModel/InputModel cho POS index và cart item.
+- [x] UI chọn store từ danh sách store được phép truy cập.
+- [x] UI hiển thị ca đang mở; nếu chưa mở ca thì điều hướng sang mở ca.
+- [x] UI danh sách product available tại store.
+- [x] Search product theo tên, SKU, barcode.
+- [x] Hiển thị giá bán bằng helper `GetEffectiveSellingPriceAsync`: ưu tiên `StoreProducts.SellingPrice`, fallback `Products.Price`.
+- [x] Hiển thị tồn kho hiện tại để staff biết sản phẩm còn hàng.
+- [x] Cart client-side bằng JavaScript.
+- [x] Cart cho phép add/remove sản phẩm.
+- [x] Cart cho phép tăng/giảm số lượng.
+- [x] Cart hiển thị subtotal, discount, tax, total tạm tính.
+- [x] UI chọn payment method.
+- [x] UI nhập số tiền khách đưa nếu payment cash.
+
+### 11.3. POS checkout backend
+
+- [x] Tạo Checkout InputModel riêng, không bind entity trực tiếp.
+- [x] Validate user có ca `Open` hợp lệ tại store đang bán.
+- [x] Check store access.
+- [x] Validate cart không rỗng.
+- [x] Backend validate lại toàn bộ cart.
+- [x] Backend tự tính giá, subtotal, discount, tax, total.
+- [x] Validate tồn kho đủ.
+- [x] Sinh `OrderCode` unique theo tenant.
+- [x] Tạo `Order`.
+- [x] Tạo `OrderItems`.
+- [x] Tạo `Payments`.
+- [x] Trừ kho trong `Inventories`.
+- [x] Ghi `InventoryTransactions` type `Sale`.
+- [x] Cập nhật `Orders.PaymentStatus`.
+- [x] Ghi audit log `CreateOrder`.
+- [x] Commit bằng database transaction.
+- [x] Redirect sang màn receipt/order detail sau checkout.
+
+### 11.4. Order, receipt và cancel
+
+- [x] Tạo `Areas/Owner/Controllers/OrdersController`.
+- [x] Tạo `Areas/Staff/Controllers/OrdersController`.
+- [x] Danh sách order theo tenant/store.
+- [x] Filter order theo store, status, payment status, ngày bán.
+- [x] Xem chi tiết order.
+- [x] In receipt.
+- [x] Cancel order.
+- [x] Check quyền cancel theo tenant/store.
+- [x] Khi cancel, cập nhật `OrderStatus = Cancelled`.
+- [x] Cập nhật `CancelledAt`, `CancelledBy`.
+- [x] Hoàn kho nếu order đã trừ kho.
+- [x] Ghi `InventoryTransactions` type `Return`.
+- [x] Cập nhật payment nếu cần.
+- [x] Ghi audit log `CancelOrder`.
+- [x] Commit cancel bằng database transaction.
+
+### 11.5. Acceptance criteria Phase 7
+
+- [x] Owner/Staff mở ca được tại store có quyền truy cập.
+- [x] User không mở được ca thứ hai khi đang có ca `Open`.
+- [x] Owner/Staff đóng ca được và hệ thống tính đúng `ExpectedCash`, `DifferenceAmount`.
+- [x] Staff không checkout được nếu chưa có ca `Open`.
+- [x] POS chỉ hiển thị product available tại store được chọn.
+- [x] POS dùng đúng selling price riêng theo store, fallback product price.
+- [x] Checkout tạo đủ `Order`, `OrderItems`, `Payments`.
+- [x] Checkout trừ kho đúng và ghi `InventoryTransactions` type `Sale`.
+- [x] Checkout thiếu tồn kho bị chặn.
+- [x] Cancel order hoàn kho đúng và ghi `InventoryTransactions` type `Return`.
+- [x] Receipt hiển thị đúng thông tin đơn, sản phẩm, thanh toán.
 
 ## 12. Phase 8: Report, subscription, audit
 
@@ -563,11 +780,11 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 
 ### 12.1. Reports
 
-- [ ] Daily sales report dùng `VwDailySalesReports`.
-- [ ] Staff sales report dùng `VwStaffSalesReports`.
-- [ ] Inventory status report dùng `VwInventoryStatusReports`.
-- [ ] System revenue report dùng `VwSystemRevenueReports`.
-- [ ] Filter theo thời gian, tenant, store.
+- [x] Daily sales report dùng `VwDailySalesReports`.
+- [x] Staff sales report dùng `VwStaffSalesReports`.
+- [x] Inventory status report dùng `VwInventoryStatusReports`.
+- [x] System revenue report dùng `VwSystemRevenueReports`.
+- [x] Filter theo thời gian, tenant, store.
 - [ ] Export Excel nếu cần.
 
 ### 12.2. Subscription
@@ -607,6 +824,8 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 - [x] Ghi audit log cho `CreateCategory`, `UpdateCategory`, `ActivateCategory`, `DeactivateCategory`, `DeleteCategory`.
 - [x] Ghi audit log cho `CreateProduct`, `UpdateProduct`, `ActivateProduct`, `DeactivateProduct`, `DeleteProduct`.
 - [x] Ghi audit log cho `AssignStoreProduct`, `UpdateStoreProduct`, `EnableStoreProduct`, `DisableStoreProduct`.
+- [x] Ghi audit log cho `ImportStock`, `ExportStock`, `AdjustStock`.
+- [x] Ghi audit log cho `OpenShift`, `CloseShift`, `CreateOrder`, `CancelOrder`.
 - [ ] Admin xem toàn bộ audit log.
 - [ ] Owner chỉ xem audit log trong tenant của mình.
 - [ ] Filter audit theo user, store, action, thời gian.
@@ -635,7 +854,7 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 - [x] Staff truy cập `/owner/products` bị access denied.
 - [x] Staff truy cập `/owner/storeproducts` bị access denied.
 - [x] Owner truy cập `/admin/owners` bị access denied.
-- [ ] Staff đổi store id sang store chưa được gán bị chặn.
+- [x] Staff đổi store id sang store chưa được gán bị chặn.
 - [ ] Owner không xem được tenant khác.
 - [ ] Tenant suspended không thao tác được module nghiệp vụ.
 
@@ -650,10 +869,20 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 - [x] Owner tạo product.
 - [x] Owner gán product vào store.
 - [x] Owner chỉnh selling price và available cho store product.
-- [ ] Owner/staff nhập kho.
-- [ ] POS tạo order trừ kho đúng.
-- [ ] Cancel order hoàn kho đúng.
-- [ ] Payment cập nhật trạng thái order đúng.
+- [x] Owner/staff nhập kho.
+- [x] Owner/staff xuất kho.
+- [x] Owner/staff điều chỉnh kho.
+- [x] Owner/staff mở ca.
+- [x] Owner/staff đóng ca.
+- [x] User đang có ca mở không mở thêm ca thứ hai được.
+- [x] Staff không bán POS khi chưa có ca mở.
+- [x] POS tạo order trừ kho đúng.
+- [x] POS checkout thiếu tồn kho bị chặn.
+- [x] Receipt hiển thị đúng sau checkout.
+- [x] Cancel order hoàn kho đúng.
+- [x] Payment cập nhật trạng thái order đúng.
+- [x] Admin xem Reports gồm daily sales, staff sales, inventory status và system revenue.
+- [x] Owner xem Reports trong tenant của mình và không thấy System Revenue Report.
 
 ### 14.3. Unit/integration test nên thêm sau MVP UI
 
@@ -669,20 +898,12 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 
 ## 15. Ưu tiên triển khai gần nhất
 
-Thứ tự nên làm ngay:
+Thứ tự nên làm tiếp sau Phase 8.1 Reports:
 
-1. Constants cho role/status/type.
-2. Cookie Authentication và `AccountController`.
-3. Current user service.
-4. Store access service.
-5. Seed role và admin development.
-6. Area layouts và dashboard placeholder.
-7. Admin tạo owner và tenant.
-8. Owner tạo store.
-9. Owner tạo staff và gán store.
-10. Product/category.
-11. Inventory import/export/adjust.
-12. POS checkout.
+1. Phase 8.3: Audit log viewer cho Admin/Owner.
+2. Phase 7 hardening: thêm unit/integration test cho shift, checkout, cancel order.
+3. Phase 8.2: Subscription UI và lịch sử thanh toán SaaS.
+4. Admin subscription plan/system payment còn thiếu ở Phase 3.3 và 3.4.
 
 ## 16. Definition of Done cho mỗi chức năng
 

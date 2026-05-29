@@ -1,0 +1,106 @@
+@using ChainPOS.Constants
+@model ChainPOS.ViewModels.Sales.ShiftIndexViewModel
+@{
+    string BadgeClass(string status) => status == ShiftStatuses.Open
+        ? "badge-processing px-2.5 py-0.5 rounded-full text-xs font-semibold"
+        : "badge-delivered px-2.5 py-0.5 rounded-full text-xs font-semibold";
+}
+
+<div class="flex flex-col gap-5">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-gray-400 mb-0.5">
+                <a asp-area="@Model.AreaName" asp-controller="Dashboard" asp-action="Index" class="hover:text-orange-500">Dashboard</a>
+                <span>/</span><span class="text-gray-600 font-medium">Sales</span>
+                <span>/</span><span class="text-orange-500 font-medium">Shifts</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">Shift Management</h1>
+        </div>
+        <a asp-area="@Model.AreaName" asp-controller="Shifts" asp-action="Open" asp-route-storeId="@Model.StoreId" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-sm font-semibold rounded-xl hover:from-orange-600 hover:to-amber-600 transition-all shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+            Open Shift
+        </a>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-xs text-gray-400 mb-2">Total Shifts</p><p class="text-2xl font-bold text-gray-900">@Model.TotalShifts</p><p class="text-xs text-gray-400 mt-1">@Model.Stores.Count accessible store(s)</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-xs text-blue-600 font-semibold mb-2">Open</p><p class="text-2xl font-bold text-blue-600">@Model.OpenShifts</p><p class="text-xs text-gray-400 mt-1">Currently active</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-xs text-green-600 font-semibold mb-2">Closed</p><p class="text-2xl font-bold text-green-600">@Model.ClosedShifts</p><p class="text-xs text-gray-400 mt-1">Completed shifts</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-xs text-gray-400 mb-2">Expected Cash</p><p class="text-2xl font-bold text-gray-900">@Model.CashExpectedToday.ToString("#,##0.##")</p><p class="text-xs text-gray-400 mt-1">Today closed cash</p></div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+        <div class="flex flex-col md:flex-row md:items-center justify-between px-5 py-4 gap-3 border-b border-gray-50">
+            <div>
+                <h3 class="font-bold text-gray-900">Shift List</h3>
+                <p class="text-xs text-gray-400 mt-0.5">Showing @Model.Shifts.Count record(s)</p>
+            </div>
+            <form asp-area="@Model.AreaName" asp-controller="Shifts" asp-action="Index" method="get" class="flex items-center gap-2 flex-wrap">
+                <select asp-for="StoreId" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 text-gray-600">
+                    <option value="">All Stores</option>
+                    @foreach (var store in Model.Stores)
+                    {
+                        <option value="@store.Id">@store.Name (@store.Code)</option>
+                    }
+                </select>
+                <select asp-for="Status" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 text-gray-600">
+                    <option value="">All Status</option>
+                    <option value="@ShiftStatuses.Open">Open</option>
+                    <option value="@ShiftStatuses.Closed">Closed</option>
+                </select>
+                <button type="submit" class="px-4 py-2 bg-orange-500 text-white text-sm font-semibold rounded-xl hover:bg-orange-600">Filter</button>
+            </form>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full data-table text-sm">
+                <thead>
+                    <tr class="bg-amber-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                        <th class="px-5 py-3 text-left">Store</th>
+                        <th class="px-5 py-3 text-left">Opened By</th>
+                        <th class="px-5 py-3 text-left">Opened</th>
+                        <th class="px-5 py-3 text-left">Closed</th>
+                        <th class="px-5 py-3 text-right">Opening Cash</th>
+                        <th class="px-5 py-3 text-right">Expected</th>
+                        <th class="px-5 py-3 text-right">Difference</th>
+                        <th class="px-5 py-3 text-center">Orders</th>
+                        <th class="px-5 py-3 text-left">Status</th>
+                        <th class="px-5 py-3 text-left">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    @if (Model.Shifts.Count == 0)
+                    {
+                        <tr><td colspan="10" class="px-5 py-10 text-center text-sm text-gray-400">No shifts found.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var shift in Model.Shifts)
+                        {
+                            <tr class="hover:bg-orange-50/30">
+                                <td class="px-5 py-3.5"><p class="font-semibold text-gray-800">@shift.StoreName</p><p class="font-mono text-xs text-gray-400">@shift.StoreCode</p></td>
+                                <td class="px-5 py-3.5 font-semibold text-gray-800">@shift.OpenedByName</td>
+                                <td class="px-5 py-3.5 text-gray-500">@shift.OpenedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="px-5 py-3.5 text-gray-500">@(shift.ClosedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                                <td class="px-5 py-3.5 text-right font-semibold text-gray-900">@shift.OpeningCash.ToString("#,##0.##")</td>
+                                <td class="px-5 py-3.5 text-right font-semibold text-gray-900">@(shift.ExpectedCash?.ToString("#,##0.##") ?? "-")</td>
+                                <td class="px-5 py-3.5 text-right font-semibold @(shift.DifferenceAmount < 0 ? "text-red-600" : "text-gray-900")">@(shift.DifferenceAmount?.ToString("#,##0.##") ?? "-")</td>
+                                <td class="px-5 py-3.5 text-center"><span class="font-bold text-gray-900">@shift.OrderCount</span><p class="text-xs text-gray-400">@shift.RevenueTotal.ToString("#,##0.##")</p></td>
+                                <td class="px-5 py-3.5"><span class="@BadgeClass(shift.Status)">@shift.Status</span></td>
+                                <td class="px-5 py-3.5">
+                                    @if (shift.CanClose)
+                                    {
+                                        <a asp-area="@Model.AreaName" asp-controller="Shifts" asp-action="Close" asp-route-id="@shift.Id" class="px-2.5 py-1 bg-orange-50 text-orange-600 text-xs font-semibold rounded-lg hover:bg-orange-100">Close</a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-xs text-gray-300">-</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
