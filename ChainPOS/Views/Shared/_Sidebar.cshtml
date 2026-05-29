@@ -91,19 +91,25 @@
         else if (appRole == "Owner")
         {
             <p class="px-3 mt-5 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Management</p>
-            <a href="#" class="@NavClass("stores")">
+            <a asp-area="Owner" asp-controller="Stores" asp-action="Index" class="@NavClass("stores")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16" />
                 </svg>
                 <span>Stores</span>
             </a>
-            <a href="#" class="@NavClass("staff")">
+            <a asp-area="Owner" asp-controller="Staff" asp-action="Index" class="@NavClass("staff")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 <span>Staff</span>
             </a>
-            <a href="#" class="@NavClass("products")">
+            <a asp-area="Owner" asp-controller="Categories" asp-action="Index" class="@NavClass("categories")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h8M4 17h12" />
+                </svg>
+                <span>Categories</span>
+            </a>
+            <a asp-area="Owner" asp-controller="Products" asp-action="Index" class="@NavClass("products")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10" />
                 </svg>

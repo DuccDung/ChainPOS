@@ -1,0 +1,179 @@
+@using ChainPOS.Constants
+@model ChainPOS.ViewModels.Owner.Stores.StoreIndexViewModel
+@{
+    ViewData["Title"] = "Stores";
+    ViewData["ActiveMenu"] = "stores";
+
+    string StatusClass(string status) => status switch
+    {
+        StoreStatuses.Active => "bg-green-50 text-green-700 border-green-100",
+        StoreStatuses.Inactive => "bg-amber-50 text-amber-700 border-amber-100",
+        StoreStatuses.Closed => "bg-red-50 text-red-700 border-red-100",
+        _ => "bg-gray-50 text-gray-600 border-gray-100"
+    };
+}
+
+<div class="flex flex-col gap-5">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-gray-400 mb-0.5">
+                <a asp-area="Owner" asp-controller="Dashboard" asp-action="Index" class="hover:text-orange-500">Dashboard</a>
+                <span>/</span><span class="text-gray-600 font-medium">Management</span>
+                <span>/</span><span class="text-orange-500 font-medium">Stores</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">Store Management</h1>
+        </div>
+        <a asp-action="Create" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-sm font-semibold rounded-xl hover:from-orange-600 hover:to-amber-600 shadow-sm transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Store
+        </a>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm flex items-center gap-3">
+            <div class="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16" />
+                </svg>
+            </div>
+            <div><p class="text-2xl font-bold text-gray-900">@Model.TotalStores</p><p class="text-xs text-gray-500">Total Stores</p></div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm flex items-center gap-3">
+            <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div><p class="text-2xl font-bold text-gray-900">@Model.ActiveStores</p><p class="text-xs text-gray-500">Active</p></div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm flex items-center gap-3">
+            <div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div><p class="text-2xl font-bold text-gray-900">@Model.InactiveStores</p><p class="text-xs text-gray-500">Inactive</p></div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm flex items-center gap-3">
+            <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 115.636 5.636a9 9 0 0112.728 12.728z" />
+                </svg>
+            </div>
+            <div><p class="text-2xl font-bold text-gray-900">@Model.ClosedStores</p><p class="text-xs text-gray-500">Closed</p></div>
+        </div>
+    </div>
+
+    @if (Model.MaxStores.HasValue)
+    {
+        <div class="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start gap-3">
+            <div class="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div>
+                <p class="font-semibold text-amber-800 text-sm">Subscription store limit</p>
+                <p class="text-xs text-amber-600 mt-0.5">Current plan allows @Model.MaxStores store(s). You are using @Model.TotalStores.</p>
+            </div>
+        </div>
+    }
+
+    <div class="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+        <div class="flex flex-col md:flex-row md:items-center justify-between px-5 py-4 gap-3 border-b border-gray-50">
+            <div>
+                <h3 class="font-bold text-gray-900">All Stores</h3>
+                <p class="text-xs text-gray-400 mt-0.5">Showing @Model.Stores.Count record(s)</p>
+            </div>
+            <form asp-action="Index" method="get" class="flex items-center gap-2 flex-wrap">
+                <div class="relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" />
+                    </svg>
+                    <input asp-for="Search" placeholder="Search stores..." class="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 w-52" />
+                </div>
+                <select asp-for="Status" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 text-gray-600">
+                    <option value="">All Statuses</option>
+                    <option value="@StoreStatuses.Active">Active</option>
+                    <option value="@StoreStatuses.Inactive">Inactive</option>
+                    <option value="@StoreStatuses.Closed">Closed</option>
+                </select>
+                <button type="submit" class="px-4 py-2 bg-orange-500 text-white text-sm font-semibold rounded-xl hover:bg-orange-600">Filter</button>
+            </form>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full data-table text-sm">
+                <thead>
+                    <tr class="bg-amber-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                        <th class="px-5 py-3 text-left">Store</th>
+                        <th class="px-5 py-3 text-left">Code</th>
+                        <th class="px-5 py-3 text-left">Contact</th>
+                        <th class="px-5 py-3 text-right">Staff</th>
+                        <th class="px-5 py-3 text-right">Products</th>
+                        <th class="px-5 py-3 text-right">Orders</th>
+                        <th class="px-5 py-3 text-left">Status</th>
+                        <th class="px-5 py-3 text-left">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    @if (Model.Stores.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="8" class="px-5 py-10 text-center text-sm text-gray-400">No stores found.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var store in Model.Stores)
+                        {
+                            <tr class="hover:bg-orange-50/30">
+                                <td class="px-5 py-3.5">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-9 h-9 bg-gradient-to-br from-orange-400 to-amber-400 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0">@store.Name[0]</div>
+                                        <div>
+                                            <p class="font-semibold text-gray-800 text-sm">@store.Name</p>
+                                            <p class="text-xs text-gray-400">@(store.Address ?? "No address")</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-5 py-3.5 font-mono text-xs text-gray-500">@store.Code</td>
+                                <td class="px-5 py-3.5 text-gray-500 text-sm">@(store.Phone ?? "-")</td>
+                                <td class="px-5 py-3.5 text-right font-semibold text-gray-900">@store.StaffCount</td>
+                                <td class="px-5 py-3.5 text-right font-semibold text-gray-900">@store.ProductCount</td>
+                                <td class="px-5 py-3.5 text-right font-semibold text-gray-900">@store.OrderCount</td>
+                                <td class="px-5 py-3.5">
+                                    <span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @StatusClass(store.Status)">@store.Status</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <div class="flex items-center gap-1">
+                                        <a asp-action="Details" asp-route-id="@store.Id" class="p-1.5 rounded-lg hover:bg-orange-50 text-gray-400 hover:text-orange-500 transition-colors" title="View">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </a>
+                                        <a asp-action="Edit" asp-route-id="@store.Id" class="p-1.5 rounded-lg hover:bg-amber-50 text-gray-400 hover:text-amber-500 transition-colors" title="Edit">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="flex items-center justify-between px-5 py-3 border-t border-gray-50 text-xs text-gray-400">
+            <span>Showing @Model.Stores.Count of @Model.TotalStores stores</span>
+            <div class="flex items-center gap-1">
+                <button class="px-3 py-1.5 rounded-lg text-gray-300" type="button" disabled>Prev</button>
+                <button class="px-3 py-1.5 rounded-lg bg-orange-500 text-white font-semibold" type="button">1</button>
+                <button class="px-3 py-1.5 rounded-lg text-gray-300" type="button" disabled>Next</button>
+            </div>
+        </div>
+    </div>
+</div>

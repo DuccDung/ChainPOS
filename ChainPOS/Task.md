@@ -386,37 +386,37 @@ Mục tiêu: owner tạo được store và staff, staff chỉ thao tác store �
 
 ### 8.1. Store
 
-- [ ] Tạo `Areas/Owner/Controllers/StoresController`.
-- [ ] Danh sách store theo `TenantId`.
-- [ ] Search theo `Name`, `Code`.
-- [ ] Create store.
-- [ ] Check `Code` unique trong tenant.
-- [ ] Edit store.
-- [ ] Set status `Inactive`, `Active`, `Closed`.
-- [ ] Soft delete bằng `IsDeleted`.
-- [ ] Check giới hạn `MaxStores` theo subscription.
-- [ ] Ghi audit log.
+- [x] Tạo `Areas/Owner/Controllers/StoresController`.
+- [x] Danh sách store theo `TenantId`.
+- [x] Search theo `Name`, `Code`.
+- [x] Create store.
+- [x] Check `Code` unique trong tenant.
+- [x] Edit store.
+- [x] Set status `Inactive`, `Active`, `Closed`.
+- [x] Soft delete bằng `IsDeleted`.
+- [x] Check giới hạn `MaxStores` theo subscription.
+- [x] Ghi audit log.
 
 ### 8.2. Staff
 
-- [ ] Tạo `Areas/Owner/Controllers/StaffController`.
-- [ ] Danh sách staff theo tenant.
-- [ ] Create staff.
-- [ ] Không cho staff tự đăng ký.
-- [ ] Gán role `STAFF`.
-- [ ] Gán `TenantId` của owner.
-- [ ] Reset password staff.
-- [ ] Lock/unlock staff.
-- [ ] Gán staff vào store qua `UserStores`.
-- [ ] Bật/tắt `UserStores.IsActive`.
-- [ ] Check giới hạn `MaxStaff` theo subscription.
-- [ ] Ghi audit log.
+- [x] Tạo `Areas/Owner/Controllers/StaffController`.
+- [x] Danh sách staff theo tenant.
+- [x] Create staff.
+- [x] Không cho staff tự đăng ký.
+- [x] Gán role `STAFF`.
+- [x] Gán `TenantId` của owner.
+- [x] Reset password staff.
+- [x] Lock/unlock staff.
+- [x] Gán staff vào store qua `UserStores`.
+- [x] Bật/tắt `UserStores.IsActive`.
+- [x] Check giới hạn `MaxStaff` theo subscription.
+- [x] Ghi audit log.
 
 ### 8.3. Acceptance criteria Phase 4
 
-- [ ] Owner chỉ thấy store và staff của tenant mình.
-- [ ] Owner tạo được staff.
-- [ ] Staff mới đăng nhập được sau khi có password hợp lệ.
+- [x] Owner chỉ thấy store và staff của tenant mình.
+- [x] Owner tạo được staff.
+- [x] Staff mới đăng nhập được sau khi có password hợp lệ.
 - [ ] Staff không thấy store chưa được gán.
 - [ ] Staff bị tắt `UserStores.IsActive` không thao tác được store đó.
 
@@ -426,29 +426,29 @@ Mục tiêu: owner quản lý danh mục, sản phẩm và bật/tắt sản ph�
 
 ### 9.1. Category
 
-- [ ] Tạo `Areas/Owner/Controllers/CategoriesController`.
-- [ ] Danh sách category theo tenant.
-- [ ] Create category.
-- [ ] Edit category.
-- [ ] Toggle `IsActive`.
-- [ ] Soft delete.
-- [ ] Check unique `(TenantId, Name)` khi chưa xóa.
+- [x] Tạo `Areas/Owner/Controllers/CategoriesController`.
+- [x] Danh sách category theo tenant.
+- [x] Create category.
+- [x] Edit category.
+- [x] Toggle `IsActive`.
+- [x] Soft delete.
+- [x] Check unique `(TenantId, Name)` khi chưa xóa.
 
 ### 9.2. Product
 
-- [ ] Tạo `Areas/Owner/Controllers/ProductsController`.
-- [ ] Danh sách product theo tenant.
-- [ ] Search theo name, sku, barcode.
-- [ ] Create product.
-- [ ] Validate category thuộc tenant.
-- [ ] Check `Sku` unique trong tenant.
-- [ ] Check `Barcode` unique trong tenant.
-- [ ] Validate `Price >= 0`, `CostPrice >= 0`.
-- [ ] Upload ảnh vào `wwwroot/uploads/products`.
-- [ ] Toggle `IsActive`.
-- [ ] Soft delete.
-- [ ] Check giới hạn `MaxProducts` theo subscription.
-- [ ] Ghi audit log.
+- [x] Tạo `Areas/Owner/Controllers/ProductsController`.
+- [x] Danh sách product theo tenant.
+- [x] Search theo name, sku, barcode.
+- [x] Create product.
+- [x] Validate category thuộc tenant.
+- [x] Check `Sku` unique trong tenant.
+- [x] Check `Barcode` unique trong tenant.
+- [x] Validate `Price >= 0`, `CostPrice >= 0`.
+- [x] Upload ảnh vào `wwwroot/uploads/products`.
+- [x] Toggle `IsActive`.
+- [x] Soft delete.
+- [x] Check giới hạn `MaxProducts` theo subscription.
+- [x] Ghi audit log.
 
 ### 9.3. Store product
 
@@ -599,6 +599,10 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
   - `CloseShift`
   - `ChangeSubscription`
 - [x] Ghi audit log cho `CreateUser`, `CreateTenant`, `LockUser`, `UnlockUser`, `SuspendTenant`, `ActivateTenant`, `CancelTenant`.
+- [x] Ghi audit log cho `CreateStore`, `UpdateStore`, `ChangeStoreStatus`, `DeleteStore`.
+- [x] Ghi audit log cho `CreateStaff`, `ResetStaffPassword`, `LockStaff`, `UnlockStaff`, `AssignStaffStore`, `EnableStaffStore`, `DisableStaffStore`.
+- [x] Ghi audit log cho `CreateCategory`, `UpdateCategory`, `ActivateCategory`, `DeactivateCategory`, `DeleteCategory`.
+- [x] Ghi audit log cho `CreateProduct`, `UpdateProduct`, `ActivateProduct`, `DeactivateProduct`, `DeleteProduct`.
 - [ ] Admin xem toàn bộ audit log.
 - [ ] Owner chỉ xem audit log trong tenant của mình.
 - [ ] Filter audit theo user, store, action, thời gian.
@@ -624,7 +628,7 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 - [x] Anonymous truy cập `/admin` bị redirect login.
 - [x] Anonymous truy cập `/owner` bị redirect login.
 - [x] Anonymous truy cập `/staff` bị redirect login.
-- [ ] Staff truy cập `/owner/products` bị access denied.
+- [x] Staff truy cập `/owner/products` bị access denied.
 - [x] Owner truy cập `/admin/owners` bị access denied.
 - [ ] Staff đổi store id sang store chưa được gán bị chặn.
 - [ ] Owner không xem được tenant khác.
@@ -634,11 +638,11 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 
 - [ ] Admin tạo owner.
 - [ ] Owner có tenant riêng.
-- [ ] Owner tạo store.
-- [ ] Owner tạo staff.
-- [ ] Owner gán staff vào store.
-- [ ] Staff login và chỉ thấy store được gán.
-- [ ] Owner tạo product.
+- [x] Owner tạo store.
+- [x] Owner tạo staff.
+- [x] Owner gán staff vào store.
+- [x] Staff login và chỉ thấy store được gán.
+- [x] Owner tạo product.
 - [ ] Owner/staff nhập kho.
 - [ ] POS tạo order trừ kho đúng.
 - [ ] Cancel order hoàn kho đúng.

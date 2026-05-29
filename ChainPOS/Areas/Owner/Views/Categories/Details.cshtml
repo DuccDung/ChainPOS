@@ -1,0 +1,72 @@
+@model ChainPOS.ViewModels.Owner.Categories.CategoryDetailsViewModel
+@{
+    ViewData["Title"] = "Category Details";
+    ViewData["ActiveMenu"] = "categories";
+}
+
+<div class="space-y-5">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="w-14 h-14 bg-gradient-to-br from-orange-400 to-amber-400 rounded-2xl flex items-center justify-center text-white text-lg font-bold flex-shrink-0">@Model.Name[0]</div>
+            <div>
+                <div class="flex items-center gap-2 text-sm text-gray-400 mb-0.5">
+                    <a asp-action="Index" class="hover:text-orange-500">Categories</a>
+                    <span>/</span><span class="text-orange-500 font-medium">@Model.Name</span>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900">@Model.Name</h1>
+                <p class="text-sm text-gray-500">@Model.Description</p>
+            </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a asp-action="Index" class="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:border-orange-200 hover:text-orange-600">Back</a>
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600">Edit</a>
+            @if (Model.IsActive)
+            {
+                <form id="category-deactivate-@Model.Id" asp-action="Deactivate" asp-route-id="@Model.Id" method="post" onsubmit="return openConfirmModal(this.id, 'Deactivate category', 'Products can remain in this category, but it will be hidden from active choices.');">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-600">Deactivate</button>
+                </form>
+            }
+            else
+            {
+                <form id="category-activate-@Model.Id" asp-action="Activate" asp-route-id="@Model.Id" method="post" onsubmit="return openConfirmModal(this.id, 'Activate category', 'This category will be available for product assignment.');">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700">Activate</button>
+                </form>
+            }
+            <form id="category-delete-@Model.Id" asp-action="Delete" asp-route-id="@Model.Id" method="post" onsubmit="return openConfirmModal(this.id, 'Delete category', 'This will soft delete the category but keep historical data.');">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100">Delete</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm">
+            <p class="text-xs text-gray-400 mb-2">Status</p>
+            <p class="text-2xl font-bold @(Model.IsActive ? "text-green-600" : "text-amber-500")">@(Model.IsActive ? "Active" : "Inactive")</p>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm">
+            <p class="text-xs text-gray-400 mb-2">Products</p>
+            <p class="text-2xl font-bold text-gray-900">@Model.ProductCount</p>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm">
+            <p class="text-xs text-gray-400 mb-2">Active Products</p>
+            <p class="text-2xl font-bold text-gray-900">@Model.ActiveProductCount</p>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm">
+            <p class="text-xs text-gray-400 mb-2">Average Price</p>
+            <p class="text-2xl font-bold text-gray-900">@Model.AveragePrice.ToString("$#,##0.##")</p>
+        </div>
+    </div>
+
+    <section class="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
+        <h2 class="font-bold text-gray-900 mb-4">Category Information</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between gap-4"><dt class="text-gray-500">Name</dt><dd class="font-semibold text-gray-900">@Model.Name</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-gray-500">Description</dt><dd class="font-semibold text-gray-900 text-right">@(Model.Description ?? "-")</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-gray-500">Created</dt><dd class="font-semibold text-gray-900">@Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-gray-500">Updated</dt><dd class="font-semibold text-gray-900">@(Model.UpdatedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</dd></div>
+        </dl>
+    </section>
+</div>

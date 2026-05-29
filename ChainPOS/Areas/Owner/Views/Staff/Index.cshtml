@@ -1,0 +1,197 @@
+@using ChainPOS.Constants
+@model ChainPOS.ViewModels.Owner.Staff.StaffIndexViewModel
+@{
+    ViewData["Title"] = "Staff";
+    ViewData["ActiveMenu"] = "staff";
+
+    string StatusClass(string status) => status switch
+    {
+        UserStatuses.Active => "bg-green-50 text-green-700 border-green-100",
+        UserStatuses.Locked => "bg-red-50 text-red-700 border-red-100",
+        UserStatuses.Pending => "bg-amber-50 text-amber-700 border-amber-100",
+        _ => "bg-gray-50 text-gray-600 border-gray-100"
+    };
+}
+
+<div class="flex flex-col gap-5">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-gray-400 mb-0.5">
+                <a asp-area="Owner" asp-controller="Dashboard" asp-action="Index" class="hover:text-orange-500">Dashboard</a>
+                <span>/</span><span class="text-gray-600 font-medium">Management</span>
+                <span>/</span><span class="text-orange-500 font-medium">Staff</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">Staff Management</h1>
+        </div>
+        <a asp-action="Create" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-sm font-semibold rounded-xl hover:from-orange-600 hover:to-amber-600 transition-all shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Staff
+        </a>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm flex items-center gap-3">
+            <div class="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </div>
+            <div><p class="text-2xl font-bold text-gray-900">@Model.TotalStaff</p><p class="text-xs text-gray-500">Total Staff</p></div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm flex items-center gap-3">
+            <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div><p class="text-2xl font-bold text-gray-900">@Model.ActiveStaff</p><p class="text-xs text-gray-500">Active</p></div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16" />
+                </svg>
+            </div>
+            <div><p class="text-2xl font-bold text-gray-900">@Model.AssignedStaff</p><p class="text-xs text-gray-500">Assigned</p></div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm flex items-center gap-3">
+            <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 115.636 5.636a9 9 0 0112.728 12.728z" />
+                </svg>
+            </div>
+            <div><p class="text-2xl font-bold text-gray-900">@Model.LockedStaff</p><p class="text-xs text-gray-500">Locked</p></div>
+        </div>
+    </div>
+
+    @if (Model.MaxStaff.HasValue)
+    {
+        <div class="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start gap-3">
+            <div class="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div>
+                <p class="font-semibold text-amber-800 text-sm">Subscription staff limit</p>
+                <p class="text-xs text-amber-600 mt-0.5">Current plan allows @Model.MaxStaff staff account(s). You are using @Model.TotalStaff.</p>
+            </div>
+        </div>
+    }
+
+    <div class="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+        <div class="flex flex-col md:flex-row md:items-center justify-between px-5 py-4 gap-3 border-b border-gray-50">
+            <div>
+                <h3 class="font-bold text-gray-900">All Staff</h3>
+                <p class="text-xs text-gray-400 mt-0.5">Showing @Model.Staff.Count record(s)</p>
+            </div>
+            <form asp-action="Index" method="get" class="flex items-center gap-2 flex-wrap">
+                <div class="relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" />
+                    </svg>
+                    <input asp-for="Search" placeholder="Search staff..." class="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 w-52" />
+                </div>
+                <select asp-for="Status" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 text-gray-600">
+                    <option value="">All Statuses</option>
+                    <option value="@UserStatuses.Active">Active</option>
+                    <option value="@UserStatuses.Locked">Locked</option>
+                    <option value="@UserStatuses.Inactive">Inactive</option>
+                </select>
+                <button type="submit" class="px-4 py-2 bg-orange-500 text-white text-sm font-semibold rounded-xl hover:bg-orange-600">Filter</button>
+            </form>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full data-table text-sm">
+                <thead>
+                    <tr class="bg-amber-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                        <th class="px-5 py-3 text-left">Staff</th>
+                        <th class="px-5 py-3 text-left">Phone</th>
+                        <th class="px-5 py-3 text-right">Stores</th>
+                        <th class="px-5 py-3 text-right">Active Stores</th>
+                        <th class="px-5 py-3 text-left">Last Login</th>
+                        <th class="px-5 py-3 text-left">Status</th>
+                        <th class="px-5 py-3 text-left">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    @if (Model.Staff.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="7" class="px-5 py-10 text-center text-sm text-gray-400">No staff found.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var staff in Model.Staff)
+                        {
+                            var initials = string.Join("", staff.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x[0])).ToUpperInvariant();
+                            if (string.IsNullOrWhiteSpace(initials)) initials = "S";
+
+                            <tr class="hover:bg-orange-50/30">
+                                <td class="px-5 py-3.5">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-9 h-9 bg-gradient-to-br from-orange-400 to-amber-400 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">@initials</div>
+                                        <div>
+                                            <p class="font-semibold text-gray-800 text-sm">@staff.FullName</p>
+                                            <p class="text-xs text-gray-400">@staff.Email</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-5 py-3.5 text-gray-500 text-sm">@(staff.PhoneNumber ?? "-")</td>
+                                <td class="px-5 py-3.5 text-right font-semibold text-gray-900">@staff.AssignedStoreCount</td>
+                                <td class="px-5 py-3.5 text-right font-semibold text-gray-900">@staff.ActiveStoreCount</td>
+                                <td class="px-5 py-3.5 text-gray-400 text-xs">@(staff.LastLoginAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                                <td class="px-5 py-3.5">
+                                    <span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @StatusClass(staff.Status)">@staff.Status</span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <div class="flex items-center gap-1">
+                                        <a asp-action="Details" asp-route-id="@staff.Id" class="p-1.5 rounded-lg hover:bg-orange-50 text-gray-400 hover:text-orange-500 transition-colors" title="View">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </a>
+                                        @if (staff.IsLocked)
+                                        {
+                                            <form id="unlock-staff-@staff.Id" asp-action="Unlock" asp-route-id="@staff.Id" method="post" onsubmit="return openConfirmModal(this.id, 'Unlock staff', 'Allow this staff account to sign in again?');">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="p-1.5 rounded-lg hover:bg-green-50 text-gray-400 hover:text-green-600 transition-colors" title="Unlock">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 018 0m-9 4h10v10H7V11z" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <form id="lock-staff-@staff.Id" asp-action="Lock" asp-route-id="@staff.Id" method="post" onsubmit="return openConfirmModal(this.id, 'Lock staff', 'This staff account will not be able to sign in.');">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors" title="Lock">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12V11H6v10zm10-10V7a4 4 0 00-8 0v4" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="flex items-center justify-between px-5 py-3 border-t border-gray-50 text-xs text-gray-400">
+            <span>Showing @Model.Staff.Count of @Model.TotalStaff staff</span>
+            <div class="flex items-center gap-1">
+                <button class="px-3 py-1.5 rounded-lg text-gray-300" type="button" disabled>Prev</button>
+                <button class="px-3 py-1.5 rounded-lg bg-orange-500 text-white font-semibold" type="button">1</button>
+                <button class="px-3 py-1.5 rounded-lg text-gray-300" type="button" disabled>Next</button>
+            </div>
+        </div>
+    </div>
+</div>
