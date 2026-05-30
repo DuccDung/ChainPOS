@@ -44,6 +44,7 @@ builder.Services.AddDbContext<StoreFlowDbContext>(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<PasswordHasher<AspNetUser>>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<RefreshUserClaimsCookieEvents>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IStoreAccessService, StoreAccessService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
@@ -71,6 +72,7 @@ builder.Services
         options.LogoutPath = "/logout";
         options.AccessDeniedPath = "/access-denied";
         options.Cookie.Name = "ChainPOS.Auth";
+        options.EventsType = typeof(RefreshUserClaimsCookieEvents);
         options.SlidingExpiration = true;
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
     });

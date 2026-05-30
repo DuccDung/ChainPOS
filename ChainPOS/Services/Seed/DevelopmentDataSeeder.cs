@@ -148,12 +148,6 @@ public static class DevelopmentDataSeeder
                 changed = true;
             }
 
-            if (!string.IsNullOrWhiteSpace(fullName) && user.FullName != fullName)
-            {
-                user.FullName = fullName;
-                changed = true;
-            }
-
             if (!string.IsNullOrWhiteSpace(phoneNumber) && user.PhoneNumber != phoneNumber)
             {
                 user.PhoneNumber = phoneNumber;
