@@ -1,0 +1,52 @@
+@model ChainPOS.ViewModels.Imports.BulkImportResultViewModel
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="max-w-5xl space-y-5">
+    <div class="flex items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">@Model.Title</h1>
+            <p class="text-sm text-gray-500 mt-1">@Model.SuccessRows success, @Model.FailedRows failed, @Model.TotalRows total row(s).</p>
+            <p class="text-xs text-gray-400 mt-1">Partial import completed: successful rows were committed; failed rows were skipped and can be corrected in the file before re-importing.</p>
+        </div>
+        <a asp-area="@Model.AreaName" asp-controller="@Model.BackController" asp-action="@Model.BackAction" class="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:border-orange-200 hover:text-orange-600">Back</a>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4">
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-xs text-gray-400 mb-2">Total</p><p class="text-2xl font-bold text-gray-900">@Model.TotalRows</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-green-100 shadow-sm"><p class="text-xs text-green-600 mb-2">Success</p><p class="text-2xl font-bold text-green-600">@Model.SuccessRows</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-red-100 shadow-sm"><p class="text-xs text-red-600 mb-2">Failed</p><p class="text-2xl font-bold text-red-600">@Model.FailedRows</p></div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+        <table class="w-full data-table text-sm">
+            <thead>
+                <tr class="bg-amber-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                    <th class="px-5 py-3 text-left">Row</th>
+                    <th class="px-5 py-3 text-left">Status</th>
+                    <th class="px-5 py-3 text-left">Message</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                @foreach (var row in Model.Rows)
+                {
+                    <tr class="hover:bg-orange-50/30">
+                        <td class="px-5 py-3.5 font-mono text-gray-500">@row.RowNumber</td>
+                        <td class="px-5 py-3.5">
+                            @if (row.Succeeded)
+                            {
+                                <span class="inline-flex rounded-full border border-green-100 bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700">Success</span>
+                            }
+                            else
+                            {
+                                <span class="inline-flex rounded-full border border-red-100 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700">Failed</span>
+                            }
+                        </td>
+                        <td class="px-5 py-3.5 text-gray-600">@row.Message</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

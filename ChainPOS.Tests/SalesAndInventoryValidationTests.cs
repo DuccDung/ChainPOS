@@ -199,6 +199,133 @@ public sealed class SalesAndInventoryValidationTests
     }
 
     [Fact]
+    public async Task Hold_order_creates_unpaid_queue_item_without_decreasing_inventory()
+    {
+        await using var db = TestDb.Create();
+        var seed = await TestDb.SeedTenantStoreProductAsync(db);
+        await TestDb.SeedInventoryAsync(db, seed.TenantId, seed.StoreId, seed.ProductId, quantity: 5m, updatedBy: seed.OwnerId);
+        var currentUser = OwnerUser(seed.TenantId, seed.OwnerId);
+        var storeAccess = new StoreAccessService(db, currentUser);
+        var audit = new FakeAuditLogService();
+        var realtime = new FakeRealtimeNotifier();
+        var shiftService = new ShiftService(db, currentUser, storeAccess, audit, realtime);
+        var posService = new PosService(db, currentUser, storeAccess, audit, realtime);
+
+        await shiftService.OpenShiftAsync(new ShiftOpenViewModel
+        {
+            StoreId = seed.StoreId,
+            OpeningCash = 0m
+        });
+        var result = await posService.CheckoutAsync(new PosCheckoutInputModel
+        {
+            StoreId = seed.StoreId,
+            PaymentMethod = PaymentMethods.Cash,
+            CustomerPaidAmount = 0m,
+            CheckoutMode = "hold",
+            Items = new List<PosCartItemInputModel>
+            {
+                new() { ProductId = seed.ProductId, Quantity = 2m }
+            }
+        });
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal(5m, db.Inventories.Single().Quantity);
+        Assert.Empty(db.InventoryTransactions);
+        var order = db.Orders.Single();
+        Assert.Equal(OrderStatuses.New, order.OrderStatus);
+        Assert.Equal(OrderPaymentStatuses.Unpaid, order.PaymentStatus);
+        Assert.Equal(PaymentStatuses.Pending, db.Payments.Single().Status);
+        Assert.Contains("HoldOrder", audit.Actions);
+        Assert.Contains(nameof(FakeRealtimeNotifier.OrderCreatedAsync), realtime.Events);
+        Assert.DoesNotContain(nameof(FakeRealtimeNotifier.InventoryChangedAsync), realtime.Events);
+    }
+
+    [Fact]
+    public async Task Complete_pending_order_decreases_inventory_and_marks_payment_paid()
+    {
+        await using var db = TestDb.Create();
+        var seed = await TestDb.SeedTenantStoreProductAsync(db);
+        await TestDb.SeedInventoryAsync(db, seed.TenantId, seed.StoreId, seed.ProductId, quantity: 5m, updatedBy: seed.OwnerId);
+        var currentUser = OwnerUser(seed.TenantId, seed.OwnerId);
+        var storeAccess = new StoreAccessService(db, currentUser);
+        var audit = new FakeAuditLogService();
+        var realtime = new FakeRealtimeNotifier();
+        var shiftService = new ShiftService(db, currentUser, storeAccess, audit, realtime);
+        var posService = new PosService(db, currentUser, storeAccess, audit, realtime);
+
+        await shiftService.OpenShiftAsync(new ShiftOpenViewModel
+        {
+            StoreId = seed.StoreId,
+            OpeningCash = 0m
+        });
+        var hold = await posService.CheckoutAsync(new PosCheckoutInputModel
+        {
+            StoreId = seed.StoreId,
+            PaymentMethod = PaymentMethods.Cash,
+            CheckoutMode = "hold",
+            Items = new List<PosCartItemInputModel>
+            {
+                new() { ProductId = seed.ProductId, Quantity = 2m }
+            }
+        });
+
+        var result = await posService.CompletePendingOrderAsync(hold.OrderId!.Value);
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal(3m, db.Inventories.Single().Quantity);
+        var order = db.Orders.Single();
+        Assert.Equal(OrderStatuses.Completed, order.OrderStatus);
+        Assert.Equal(OrderPaymentStatuses.Paid, order.PaymentStatus);
+        Assert.Equal(PaymentStatuses.Paid, db.Payments.Single().Status);
+        Assert.Contains("CompletePendingOrder", audit.Actions);
+        Assert.Contains(db.InventoryTransactions, x => x.Type == InventoryTransactionTypes.Sale);
+        Assert.Contains(nameof(FakeRealtimeNotifier.OrderCreatedAsync), realtime.Events);
+        Assert.Contains(nameof(FakeRealtimeNotifier.InventoryChangedAsync), realtime.Events);
+    }
+
+    [Fact]
+    public async Task Cancel_pending_order_marks_cancelled_without_changing_inventory()
+    {
+        await using var db = TestDb.Create();
+        var seed = await TestDb.SeedTenantStoreProductAsync(db);
+        await TestDb.SeedInventoryAsync(db, seed.TenantId, seed.StoreId, seed.ProductId, quantity: 5m, updatedBy: seed.OwnerId);
+        var currentUser = OwnerUser(seed.TenantId, seed.OwnerId);
+        var storeAccess = new StoreAccessService(db, currentUser);
+        var audit = new FakeAuditLogService();
+        var realtime = new FakeRealtimeNotifier();
+        var shiftService = new ShiftService(db, currentUser, storeAccess, audit, realtime);
+        var posService = new PosService(db, currentUser, storeAccess, audit, realtime);
+
+        await shiftService.OpenShiftAsync(new ShiftOpenViewModel
+        {
+            StoreId = seed.StoreId,
+            OpeningCash = 0m
+        });
+        var hold = await posService.CheckoutAsync(new PosCheckoutInputModel
+        {
+            StoreId = seed.StoreId,
+            PaymentMethod = PaymentMethods.Cash,
+            CheckoutMode = "hold",
+            Items = new List<PosCartItemInputModel>
+            {
+                new() { ProductId = seed.ProductId, Quantity = 2m }
+            }
+        });
+
+        var result = await posService.CancelPendingOrderAsync(hold.OrderId!.Value);
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal(5m, db.Inventories.Single().Quantity);
+        Assert.Empty(db.InventoryTransactions);
+        var order = db.Orders.Single();
+        Assert.Equal(OrderStatuses.Cancelled, order.OrderStatus);
+        Assert.Equal(OrderPaymentStatuses.Cancelled, order.PaymentStatus);
+        Assert.Equal(PaymentStatuses.Cancelled, db.Payments.Single().Status);
+        Assert.Contains("CancelPendingOrder", audit.Actions);
+        Assert.Contains(nameof(FakeRealtimeNotifier.OrderCancelledAsync), realtime.Events);
+    }
+
+    [Fact]
     public async Task Cancel_order_returns_not_found_for_missing_order()
     {
         await using var db = TestDb.Create();

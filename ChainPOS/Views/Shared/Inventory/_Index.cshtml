@@ -22,6 +22,7 @@
             <h1 class="text-2xl font-bold text-gray-900">Stock Management</h1>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+            <a asp-area="@Model.AreaName" asp-controller="Inventory" asp-action="BulkImport" class="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-700 hover:bg-orange-100">Bulk Import</a>
             <a asp-area="@Model.AreaName" asp-controller="Inventory" asp-action="Import" asp-route-storeId="@Model.StoreId" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-sm font-semibold rounded-xl hover:from-orange-600 hover:to-amber-600 transition-all shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                 Import Stock
@@ -102,7 +103,19 @@
                         foreach (var item in Model.Items)
                         {
                             <tr class="hover:bg-orange-50/30" data-realtime-inventory-row data-store-id="@item.StoreId" data-product-id="@item.ProductId" data-min-quantity="@item.MinQuantity">
-                                <td class="px-5 py-3.5 font-semibold text-gray-800">@item.ProductName</td>
+                                <td class="px-5 py-3.5">
+                                    <div class="flex items-center gap-3">
+                                        @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                                        {
+                                            <img src="@item.ImageUrl" alt="@item.ProductName" class="w-9 h-9 rounded-xl object-cover border border-orange-100 flex-shrink-0" />
+                                        }
+                                        else
+                                        {
+                                            <div class="w-9 h-9 bg-gradient-to-br from-orange-400 to-amber-400 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0">@item.ProductName[0]</div>
+                                        }
+                                        <span class="font-semibold text-gray-800">@item.ProductName</span>
+                                    </div>
+                                </td>
                                 <td class="px-5 py-3.5 font-mono text-xs text-gray-500">@(item.Sku ?? "-")</td>
                                 <td class="px-5 py-3.5">
                                     <p class="font-semibold text-gray-800 text-sm">@item.StoreName</p>

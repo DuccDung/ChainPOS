@@ -18,9 +18,23 @@ public sealed class SystemPaymentListItemViewModel
 
     public string Status { get; set; } = string.Empty;
 
+    public string? TransactionCode { get; set; }
+
+    public string? TransferContent { get; set; }
+
+    public string? QrImageUrl { get; set; }
+
+    public DateTime? ExpiredAt { get; set; }
+
     public DateTime? PaidAt { get; set; }
+
+    public decimal? PaidAmount { get; set; }
 
     public string? InvoiceUrl { get; set; }
 
     public DateTime CreatedAt { get; set; }
+
+    public bool IsSePay { get; set; }
+
+    public bool IsExpired { get; set; }
 }

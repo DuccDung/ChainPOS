@@ -14,11 +14,16 @@ namespace ChainPOS.Controllers;
 public class AccountController : Controller
 {
     private readonly IAuthService _authService;
+    private readonly IPasswordResetService _passwordResetService;
     private readonly IAuditLogService _auditLog;
 
-    public AccountController(IAuthService authService, IAuditLogService auditLog)
+    public AccountController(
+        IAuthService authService,
+        IPasswordResetService passwordResetService,
+        IAuditLogService auditLog)
     {
         _authService = authService;
+        _passwordResetService = passwordResetService;
         _auditLog = auditLog;
     }
 
@@ -70,6 +75,76 @@ public class AccountController : Controller
         }
 
         return RedirectToRoleDashboard(result.PrimaryRole);
+    }
+
+    [HttpGet("forgot-password")]
+    [AllowAnonymous]
+    public IActionResult ForgotPassword()
+    {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return RedirectToRoleDashboard();
+        }
+
+        return View(new ForgotPasswordViewModel());
+    }
+
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ForgotPassword(
+        ForgotPasswordViewModel model,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var result = await _passwordResetService.RequestOwnerPasswordResetOtpAsync(model, cancellationToken);
+        if (!result.Succeeded)
+        {
+            ModelState.AddModelError(string.Empty, result.Message);
+            return View(model);
+        }
+
+        TempData["SuccessMessage"] = result.Message;
+        return RedirectToAction(nameof(VerifyForgotPasswordOtp), new { email = model.Email.Trim() });
+    }
+
+    [HttpGet("forgot-password/verify")]
+    [AllowAnonymous]
+    public IActionResult VerifyForgotPasswordOtp(string? email = null)
+    {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return RedirectToRoleDashboard();
+        }
+
+        return View(new ResetPasswordWithOtpViewModel { Email = email?.Trim() ?? string.Empty });
+    }
+
+    [HttpPost("forgot-password/verify")]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> VerifyForgotPasswordOtp(
+        ResetPasswordWithOtpViewModel model,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var result = await _passwordResetService.ResetOwnerPasswordWithOtpAsync(model, cancellationToken);
+        if (!result.Succeeded)
+        {
+            ModelState.AddModelError(string.Empty, result.Message);
+            return View(model);
+        }
+
+        TempData["SuccessMessage"] = result.Message;
+        return RedirectToAction(nameof(Login));
     }
 
     [HttpPost("logout")]

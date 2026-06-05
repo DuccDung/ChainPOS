@@ -1,0 +1,235 @@
+@model ChainPOS.ViewModels.Staff.Profile.StaffProfileViewModel
+@using ChainPOS.Constants
+@{
+    ViewData["Title"] = "Profile";
+    ViewData["ActiveMenu"] = "profile";
+
+    string DateTimeText(DateTime? value) => value.HasValue
+        ? value.Value.ToLocalTime().ToString("HH:mm dd/MM/yyyy")
+        : "-";
+
+    string AccountStatusClass(string status) => status switch
+    {
+        UserStatuses.Active => "border-green-100 bg-green-50 text-green-700",
+        UserStatuses.Locked => "border-red-100 bg-red-50 text-red-700",
+        _ => "border-gray-100 bg-gray-50 text-gray-600"
+    };
+
+    string StoreStatusClass(bool canWork) => canWork
+        ? "border-green-100 bg-green-50 text-green-700"
+        : "border-red-100 bg-red-50 text-red-700";
+}
+
+<div class="space-y-5">
+    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <div class="h-16 w-16 shrink-0 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 text-white flex items-center justify-center text-xl font-bold shadow-sm">
+                @Model.Initials
+            </div>
+            <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                    <span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @AccountStatusClass(Model.Status)">@Model.Status</span>
+                    @foreach (var role in Model.Roles)
+                    {
+                        <span class="inline-flex rounded-full border border-orange-100 bg-orange-50 px-2.5 py-0.5 text-xs font-semibold text-orange-700">@role</span>
+                    }
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900">@Model.FullName</h1>
+                <p class="text-sm text-gray-500 truncate">@Model.Email</p>
+            </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a asp-area="Staff" asp-controller="Dashboard" asp-action="Index" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:border-orange-200 hover:text-orange-600">Dashboard</a>
+            <a asp-area="Staff" asp-controller="Pos" asp-action="Index" class="rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600">Open POS</a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <section class="rounded-2xl border border-orange-100 bg-white p-4 shadow-sm">
+            <p class="text-xs font-semibold text-gray-400 mb-2">Tenant</p>
+            <p class="text-lg font-bold text-gray-900 truncate">@Model.TenantName</p>
+        </section>
+        <section class="rounded-2xl border border-orange-100 bg-white p-4 shadow-sm">
+            <p class="text-xs font-semibold text-gray-400 mb-2">Assigned Stores</p>
+            <p class="text-2xl font-bold text-gray-900">@Model.AssignedStoreCount</p>
+        </section>
+        <section class="rounded-2xl border border-orange-100 bg-white p-4 shadow-sm">
+            <p class="text-xs font-semibold text-gray-400 mb-2">Active Access</p>
+            <p class="text-2xl font-bold text-green-600">@Model.ActiveStoreCount</p>
+        </section>
+        <section class="rounded-2xl border border-orange-100 bg-white p-4 shadow-sm">
+            <p class="text-xs font-semibold text-gray-400 mb-2">Disabled Access</p>
+            <p class="text-2xl font-bold text-red-600">@Model.DisabledStoreCount</p>
+        </section>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-5">
+        <section class="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between gap-3 mb-4">
+                <h2 class="font-bold text-gray-900">Staff Information</h2>
+                <span class="text-xs font-semibold text-gray-400">ID @Model.Id</span>
+            </div>
+            <dl class="divide-y divide-gray-50 text-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-3">
+                    <dt class="font-semibold text-gray-400">Full name</dt>
+                    <dd class="font-bold text-gray-900 text-right">@Model.FullName</dd>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-3">
+                    <dt class="font-semibold text-gray-400">Email</dt>
+                    <dd class="font-bold text-gray-900 text-right break-all">@Model.Email</dd>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-3">
+                    <dt class="font-semibold text-gray-400">Phone</dt>
+                    <dd class="font-bold text-gray-900 text-right">@(Model.PhoneNumber ?? "-")</dd>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-3">
+                    <dt class="font-semibold text-gray-400">Account status</dt>
+                    <dd><span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @AccountStatusClass(Model.Status)">@Model.Status</span></dd>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-3">
+                    <dt class="font-semibold text-gray-400">Created</dt>
+                    <dd class="font-bold text-gray-900 text-right">@DateTimeText(Model.CreatedAt)</dd>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-3">
+                    <dt class="font-semibold text-gray-400">Updated</dt>
+                    <dd class="font-bold text-gray-900 text-right">@DateTimeText(Model.UpdatedAt)</dd>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-3">
+                    <dt class="font-semibold text-gray-400">Last login</dt>
+                    <dd class="font-bold text-gray-900 text-right">@DateTimeText(Model.LastLoginAt)</dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between gap-3 mb-4">
+                <h2 class="font-bold text-gray-900">Permission Scope</h2>
+                <span class="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">@Model.ActiveStoreCount active</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                    <p class="text-xs font-semibold uppercase text-gray-400 mb-2">Role</p>
+                    <p class="text-lg font-bold text-gray-900">Staff</p>
+                    <p class="text-xs text-gray-500 mt-1">Store-scoped access</p>
+                </div>
+                <div class="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                    <p class="text-xs font-semibold uppercase text-gray-400 mb-2">Modules</p>
+                    <div class="flex flex-wrap gap-1.5">
+                        <span class="rounded-lg bg-white border border-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">POS</span>
+                        <span class="rounded-lg bg-white border border-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">Inventory</span>
+                        <span class="rounded-lg bg-white border border-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">Shifts</span>
+                        <span class="rounded-lg bg-white border border-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">Orders</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-4">
+                <p class="text-sm font-semibold text-amber-800">Effective store access</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    @if (Model.StoreAccesses.Any(x => x.CanWork))
+                    {
+                        foreach (var store in Model.StoreAccesses.Where(x => x.CanWork))
+                        {
+                            <span class="rounded-lg bg-white border border-amber-100 px-2.5 py-1 text-xs font-semibold text-gray-800">@store.StoreCode</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="text-sm text-amber-700">No active store access.</span>
+                    }
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <section class="rounded-2xl border border-orange-100 bg-white shadow-sm overflow-hidden">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 px-5 py-4 border-b border-gray-50">
+            <div>
+                <h2 class="font-bold text-gray-900">Store Access</h2>
+                <p class="text-xs text-gray-400 mt-0.5">Assigned stores and operational permissions</p>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full data-table text-sm">
+                <thead>
+                    <tr class="bg-amber-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                        <th class="px-5 py-3 text-left">Store</th>
+                        <th class="px-5 py-3 text-left">Status</th>
+                        <th class="px-5 py-3 text-left">Assignment</th>
+                        <th class="px-5 py-3 text-left">Permissions</th>
+                        <th class="px-5 py-3 text-left">Quick Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    @if (Model.StoreAccesses.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="5" class="px-5 py-10 text-center text-sm text-gray-400">No stores assigned.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var store in Model.StoreAccesses)
+                        {
+                            <tr class="hover:bg-orange-50/30 align-top">
+                                <td class="px-5 py-4">
+                                    <p class="font-bold text-gray-900">@store.StoreName</p>
+                                    <p class="font-mono text-xs text-gray-400">@store.StoreCode</p>
+                                    @if (!string.IsNullOrWhiteSpace(store.StoreAddress))
+                                    {
+                                        <p class="text-xs text-gray-400 mt-1 max-w-xs">@store.StoreAddress</p>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(store.StorePhone))
+                                    {
+                                        <p class="text-xs text-gray-400 mt-0.5">@store.StorePhone</p>
+                                    }
+                                </td>
+                                <td class="px-5 py-4">
+                                    <span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @StoreStatusClass(store.CanWork)">
+                                        @(store.CanWork ? "Active" : "No access")
+                                    </span>
+                                    <p class="text-xs text-gray-400 mt-2">Store: @store.StoreStatus</p>
+                                </td>
+                                <td class="px-5 py-4">
+                                    <p class="font-semibold @(store.AssignmentIsActive ? "text-green-700" : "text-red-700")">@(store.AssignmentIsActive ? "Enabled" : "Disabled")</p>
+                                    <p class="text-xs text-gray-400 mt-1">Assigned @DateTimeText(store.AssignedAt)</p>
+                                </td>
+                                <td class="px-5 py-4">
+                                    @if (store.CanWork)
+                                    {
+                                        <div class="flex flex-wrap gap-1.5 min-w-[220px]">
+                                            <span class="rounded-lg bg-green-50 border border-green-100 px-2 py-1 text-xs font-semibold text-green-700">POS checkout</span>
+                                            <span class="rounded-lg bg-orange-50 border border-orange-100 px-2 py-1 text-xs font-semibold text-orange-700">Inventory movement</span>
+                                            <span class="rounded-lg bg-amber-50 border border-amber-100 px-2 py-1 text-xs font-semibold text-amber-700">Open/close shifts</span>
+                                            <span class="rounded-lg bg-gray-50 border border-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">Order lookup</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-sm text-gray-400">Disabled for staff modules.</span>
+                                    }
+                                </td>
+                                <td class="px-5 py-4">
+                                    @if (store.CanWork)
+                                    {
+                                        <div class="flex flex-wrap gap-2 min-w-[220px]">
+                                            <a asp-area="Staff" asp-controller="Pos" asp-action="Index" asp-route-storeId="@store.StoreId" class="rounded-lg bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-100">POS</a>
+                                            <a asp-area="Staff" asp-controller="Inventory" asp-action="Index" asp-route-storeId="@store.StoreId" class="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100">Inventory</a>
+                                            <a asp-area="Staff" asp-controller="Shifts" asp-action="Index" asp-route-storeId="@store.StoreId" class="rounded-lg bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100">Shifts</a>
+                                            <a asp-area="Staff" asp-controller="Orders" asp-action="Index" asp-route-storeId="@store.StoreId" class="rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100">Orders</a>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-sm text-gray-300">-</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>

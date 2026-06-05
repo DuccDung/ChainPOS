@@ -84,6 +84,7 @@ public sealed class InventoryService : IInventoryService
                 StoreCode = x.Store.Code,
                 ProductId = x.ProductId,
                 ProductName = x.Product.Name,
+                ImageUrl = x.Product.ImageUrl,
                 Sku = x.Product.Sku,
                 Barcode = x.Product.Barcode,
                 CategoryName = x.Product.Category != null ? x.Product.Category.Name : null,

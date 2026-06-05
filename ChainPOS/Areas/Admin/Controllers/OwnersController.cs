@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ChainPOS.Constants;
+using ChainPOS.Services.Import;
 using ChainPOS.Services.Admin;
 using ChainPOS.ViewModels.Admin.Owners;
 using Microsoft.AspNetCore.Authorization;
@@ -12,10 +13,40 @@ namespace ChainPOS.Areas.Admin.Controllers;
 public sealed class OwnersController : Controller
 {
     private readonly IAdminManagementService _adminManagement;
+    private readonly IBulkImportService _bulkImport;
 
-    public OwnersController(IAdminManagementService adminManagement)
+    public OwnersController(IAdminManagementService adminManagement, IBulkImportService bulkImport)
     {
         _adminManagement = adminManagement;
+        _bulkImport = bulkImport;
+    }
+
+    public IActionResult Import()
+    {
+        return View();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Import(IFormFile? file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            TempData["ErrorMessage"] = "Import file is required.";
+            return View();
+        }
+
+        var result = await _bulkImport.ImportOwnersAsync(
+            file,
+            User.FindFirstValue(ClaimTypes.NameIdentifier),
+            cancellationToken);
+        return View("~/Views/Shared/Imports/Result.cshtml", result);
+    }
+
+    public IActionResult Template()
+    {
+        const string csv = "FullName,Email,PhoneNumber,TenantName,TaxCode,TenantAddress,TenantPhone,Password\nNguyen Van A,owner.new@demo.local,0909000001,Demo Tenant,0312340000,Demo address,0909000001,Owner@123\n";
+        return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "owners-template.csv");
     }
 
     public async Task<IActionResult> Index(string? search, string? status, CancellationToken cancellationToken)

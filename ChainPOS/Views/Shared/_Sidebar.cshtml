@@ -1,7 +1,16 @@
 @using ChainPOS.Constants
 @using System.Security.Claims
 @{
-    var appRole = ViewData["AppRole"]?.ToString() ?? "Admin";
+    var claimRole = User.IsInRole(AppRoles.Admin)
+        ? "Admin"
+        : User.IsInRole(AppRoles.Owner)
+            ? "Owner"
+            : User.IsInRole(AppRoles.Staff)
+                ? "Staff"
+                : "Admin";
+    var appRole = string.IsNullOrWhiteSpace(ViewData["AppRole"]?.ToString())
+        ? claimRole
+        : ViewData["AppRole"]!.ToString();
     var active = ViewData["ActiveMenu"]?.ToString() ?? "dashboard";
     var userName = User.FindFirstValue(AppClaimTypes.FullName) ?? User.Identity?.Name ?? "User";
     var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
@@ -150,6 +159,13 @@
                 </svg>
                 <span>Orders</span>
             </a>
+            <a asp-area="Owner" asp-controller="Payments" asp-action="Index" class="@NavClass("payments")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9" />
+                </svg>
+                <span>Payments</span>
+                @Html.Raw(Dot("payments"))
+            </a>
             <a asp-area="Owner" asp-controller="Reports" asp-action="Index" class="@NavClass("reports")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m4 6V7m4 10v-3M5 21h14" />
@@ -198,11 +214,19 @@
                 </svg>
                 <span>Orders</span>
             </a>
-            <a href="#" class="@NavClass("profile")">
+            <a asp-area="Staff" asp-controller="Payments" asp-action="Index" class="@NavClass("payments")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9" />
+                </svg>
+                <span>Payments</span>
+                @Html.Raw(Dot("payments"))
+            </a>
+            <a asp-area="Staff" asp-controller="Profile" asp-action="Index" class="@NavClass("profile")">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A7 7 0 0112 15a7 7 0 016.879 2.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 <span>Profile</span>
+                @Html.Raw(Dot("profile"))
             </a>
         }
     </nav>

@@ -53,6 +53,8 @@ public partial class StoreFlowDbContext : DbContext
 
     public virtual DbSet<SystemPayment> SystemPayments { get; set; }
 
+    public virtual DbSet<SystemPaymentWebhook> SystemPaymentWebhooks { get; set; }
+
     public virtual DbSet<Tenant> Tenants { get; set; }
 
     public virtual DbSet<TenantSubscription> TenantSubscriptions { get; set; }
@@ -91,6 +93,10 @@ public partial class StoreFlowDbContext : DbContext
             entity.HasIndex(e => e.NormalizedEmail, "EmailIndex");
 
             entity.HasIndex(e => e.TenantId, "IX_AspNetUsers_TenantId");
+
+            entity.HasIndex(e => e.PhoneNumber, "UX_AspNetUsers_PhoneNumber")
+                .IsUnique()
+                .HasFilter("([PhoneNumber] IS NOT NULL)");
 
             entity.HasIndex(e => e.NormalizedUserName, "UserNameIndex")
                 .IsUnique()
@@ -157,6 +163,10 @@ public partial class StoreFlowDbContext : DbContext
 
         modelBuilder.Entity<AuditLog>(entity =>
         {
+            entity.HasIndex(e => new { e.TenantId, e.Action, e.CreatedAt }, "IX_AuditLogs_TenantId_Action_CreatedAt");
+
+            entity.HasIndex(e => new { e.TenantId, e.CreatedAt }, "IX_AuditLogs_TenantId_CreatedAt");
+
             entity.HasIndex(e => new { e.TenantId, e.StoreId, e.CreatedAt }, "IX_AuditLogs_TenantId_StoreId_CreatedAt");
 
             entity.HasIndex(e => new { e.TenantId, e.UserId, e.CreatedAt }, "IX_AuditLogs_TenantId_UserId_CreatedAt");
@@ -472,14 +482,27 @@ public partial class StoreFlowDbContext : DbContext
         {
             entity.HasIndex(e => new { e.TenantId, e.PaidAt }, "IX_SystemPayments_TenantId_PaidAt");
 
+            entity.HasIndex(e => e.TransactionCode, "IX_SystemPayments_TransactionCode")
+                .IsUnique()
+                .HasFilter("([TransactionCode] IS NOT NULL)");
+
             entity.Property(e => e.Id).HasDefaultValueSql("(newsequentialid())");
             entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.BankAccountName).HasMaxLength(255);
+            entity.Property(e => e.BankAccountNo).HasMaxLength(50);
+            entity.Property(e => e.BankCode).HasMaxLength(50);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
             entity.Property(e => e.InvoiceUrl).HasMaxLength(500);
             entity.Property(e => e.Method).HasMaxLength(30);
+            entity.Property(e => e.PaidAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.ProviderTransactionId).HasMaxLength(100);
+            entity.Property(e => e.QrContent).HasMaxLength(1000);
+            entity.Property(e => e.RawResponse).HasColumnType("nvarchar(max)");
             entity.Property(e => e.Status)
                 .HasMaxLength(30)
                 .HasDefaultValue("Pending");
+            entity.Property(e => e.TransactionCode).HasMaxLength(100);
+            entity.Property(e => e.TransferContent).HasMaxLength(255);
 
             entity.HasOne(d => d.Subscription).WithMany(p => p.SystemPayments)
                 .HasForeignKey(d => d.SubscriptionId)
@@ -488,6 +511,29 @@ public partial class StoreFlowDbContext : DbContext
             entity.HasOne(d => d.Tenant).WithMany(p => p.SystemPayments)
                 .HasForeignKey(d => d.TenantId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
+        });
+
+        modelBuilder.Entity<SystemPaymentWebhook>(entity =>
+        {
+            entity.HasIndex(e => e.SystemPaymentId, "IX_SystemPaymentWebhooks_SystemPaymentId");
+
+            entity.HasIndex(e => e.IsProcessed, "IX_SystemPaymentWebhooks_IsProcessed");
+
+            entity.HasIndex(e => e.ReferenceCode, "IX_SystemPaymentWebhooks_ReferenceCode");
+
+            entity.Property(e => e.Id).HasDefaultValueSql("(newsequentialid())");
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.ContentTransfer).HasMaxLength(1000);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+            entity.Property(e => e.EventType).HasMaxLength(50);
+            entity.Property(e => e.Gateway)
+                .HasMaxLength(30)
+                .HasDefaultValue("sepay");
+            entity.Property(e => e.RawPayload).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.ReferenceCode).HasMaxLength(100);
+
+            entity.HasOne(d => d.SystemPayment).WithMany(p => p.Webhooks)
+                .HasForeignKey(d => d.SystemPaymentId);
         });
 
         modelBuilder.Entity<Tenant>(entity =>

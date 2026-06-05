@@ -165,6 +165,7 @@ public sealed class OrderService : IOrderService
                     .Select(i => new OrderItemDetailsViewModel
                     {
                         ProductName = i.ProductName,
+                        ImageUrl = i.Product.ImageUrl,
                         Sku = i.Sku,
                         Quantity = i.Quantity,
                         UnitPrice = i.UnitPrice,
@@ -224,62 +225,67 @@ public sealed class OrderService : IOrderService
             .Where(x => x.TenantId == tenantId && x.Id == order.StoreId)
             .Select(x => new { x.Name, x.Code })
             .FirstAsync(cancellationToken);
+        var shouldRestoreInventory = order.OrderStatus == OrderStatuses.Completed
+            || order.PaymentStatus == OrderPaymentStatuses.Paid;
         var inventoryEvents = new List<InventoryChangedEvent>();
-        foreach (var item in order.OrderItems)
+        if (shouldRestoreInventory)
         {
-            var inventory = await _db.Inventories.FirstOrDefaultAsync(
-                x => x.TenantId == tenantId && x.StoreId == order.StoreId && x.ProductId == item.ProductId,
-                cancellationToken);
-            if (inventory is null)
+            foreach (var item in order.OrderItems)
             {
-                inventory = new Models.Inventory
+                var inventory = await _db.Inventories.FirstOrDefaultAsync(
+                    x => x.TenantId == tenantId && x.StoreId == order.StoreId && x.ProductId == item.ProductId,
+                    cancellationToken);
+                if (inventory is null)
+                {
+                    inventory = new Models.Inventory
+                    {
+                        Id = Guid.NewGuid(),
+                        TenantId = tenantId,
+                        StoreId = order.StoreId,
+                        ProductId = item.ProductId,
+                        Quantity = 0m,
+                        MinQuantity = 0m,
+                        UpdatedAt = DateTime.UtcNow,
+                        UpdatedBy = userId
+                    };
+                    _db.Inventories.Add(inventory);
+                }
+
+                var before = inventory.Quantity;
+                inventory.Quantity += item.Quantity;
+                inventory.UpdatedAt = DateTime.UtcNow;
+                inventory.UpdatedBy = userId;
+
+                _db.InventoryTransactions.Add(new InventoryTransaction
                 {
                     Id = Guid.NewGuid(),
                     TenantId = tenantId,
                     StoreId = order.StoreId,
                     ProductId = item.ProductId,
-                    Quantity = 0m,
-                    MinQuantity = 0m,
-                    UpdatedAt = DateTime.UtcNow,
-                    UpdatedBy = userId
-                };
-                _db.Inventories.Add(inventory);
+                    Type = InventoryTransactionTypes.Return,
+                    Quantity = item.Quantity,
+                    BeforeQuantity = before,
+                    AfterQuantity = inventory.Quantity,
+                    Reason = $"Cancel order {order.OrderCode}",
+                    ReferenceType = nameof(Order),
+                    ReferenceId = order.Id.ToString(),
+                    CreatedBy = userId,
+                    CreatedAt = DateTime.UtcNow
+                });
+                inventoryEvents.Add(new InventoryChangedEvent(
+                    tenantId,
+                    order.StoreId,
+                    item.ProductId,
+                    store.Name,
+                    store.Code,
+                    item.ProductName,
+                    item.Sku,
+                    inventory.Quantity,
+                    inventory.MinQuantity,
+                    InventoryTransactionTypes.Return,
+                    item.Quantity,
+                    DateTime.UtcNow));
             }
-
-            var before = inventory.Quantity;
-            inventory.Quantity += item.Quantity;
-            inventory.UpdatedAt = DateTime.UtcNow;
-            inventory.UpdatedBy = userId;
-
-            _db.InventoryTransactions.Add(new InventoryTransaction
-            {
-                Id = Guid.NewGuid(),
-                TenantId = tenantId,
-                StoreId = order.StoreId,
-                ProductId = item.ProductId,
-                Type = InventoryTransactionTypes.Return,
-                Quantity = item.Quantity,
-                BeforeQuantity = before,
-                AfterQuantity = inventory.Quantity,
-                Reason = $"Cancel order {order.OrderCode}",
-                ReferenceType = nameof(Order),
-                ReferenceId = order.Id.ToString(),
-                CreatedBy = userId,
-                CreatedAt = DateTime.UtcNow
-            });
-            inventoryEvents.Add(new InventoryChangedEvent(
-                tenantId,
-                order.StoreId,
-                item.ProductId,
-                store.Name,
-                store.Code,
-                item.ProductName,
-                item.Sku,
-                inventory.Quantity,
-                inventory.MinQuantity,
-                InventoryTransactionTypes.Return,
-                item.Quantity,
-                DateTime.UtcNow));
         }
 
         var oldValue = $"Status={order.OrderStatus}; PaymentStatus={order.PaymentStatus}; Total={order.TotalAmount:#,##0.##}";

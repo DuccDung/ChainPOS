@@ -1,0 +1,175 @@
+@model ChainPOS.ViewModels.SystemPayments.SystemPaymentCheckoutViewModel
+@{
+    Layout = Model.LayoutPath;
+    ViewData["Title"] = "SePay Payment";
+    ViewData["ActiveMenu"] = Model.LayoutPath.Contains("_OwnerLayout", StringComparison.OrdinalIgnoreCase) ? "subscription" : "payments";
+    var isFinal = Model.IsPaid || Model.IsExpired;
+    var displayStatus = Model.IsExpired && !Model.IsPaid ? "Expired" : Model.PaymentStatus;
+    string StatusClass() => Model.IsPaid
+        ? "bg-green-50 text-green-700 border-green-100"
+        : Model.IsExpired
+            ? "bg-red-50 text-red-700 border-red-100"
+            : "bg-amber-50 text-amber-700 border-amber-100";
+}
+
+<div class="flex flex-col gap-5"
+     data-system-payment-shell
+     data-poll-url="@Model.PollStatusUrl"
+     data-is-final="@(isFinal ? "true" : "false")"
+     data-is-paid="@(Model.IsPaid ? "true" : "false")"
+     data-is-expired="@(Model.IsExpired ? "true" : "false")"
+     data-payment-id="@Model.PaymentId">
+    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+            <a href="@Model.BackUrl" class="text-sm text-orange-600 font-semibold hover:text-orange-700">@Model.BackLabel</a>
+            <h1 class="text-2xl font-bold text-gray-900 mt-2">SePay Subscription Payment</h1>
+            <p class="text-sm text-gray-500 mt-1">@Model.TenantName &middot; @Model.PlanName</p>
+        </div>
+        <span class="inline-flex w-fit rounded-full border px-3 py-1 text-xs font-semibold @StatusClass()">@displayStatus</span>
+    </div>
+
+    <section class="bg-white rounded-2xl border border-orange-100 shadow-sm p-5">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+            <div class="max-w-2xl">
+                <h2 class="text-xl font-bold text-gray-900">@Model.StatusTitle</h2>
+                <p class="text-sm text-gray-500 mt-2">@Model.StatusDescription</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-full lg:min-w-[520px]">
+                <div class="rounded-xl bg-orange-50 p-3">
+                    <p class="text-xs text-orange-600 font-semibold">Amount</p>
+                    <p class="text-lg font-bold text-gray-900">@Model.AmountText</p>
+                </div>
+                <div class="rounded-xl bg-amber-50 p-3">
+                    <p class="text-xs text-amber-600 font-semibold">Code</p>
+                    <p class="text-sm font-bold text-gray-900 break-all">@(string.IsNullOrWhiteSpace(Model.TransactionCode) ? "-" : Model.TransactionCode)</p>
+                </div>
+                <div class="rounded-xl bg-green-50 p-3">
+                    <p class="text-xs text-green-600 font-semibold">Paid at</p>
+                    <p class="text-sm font-bold text-gray-900">@(Model.PaidAtText ?? "-")</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-5">
+        <section class="bg-white rounded-2xl border border-orange-100 shadow-sm p-5">
+            <div class="flex items-center justify-between gap-3 mb-4">
+                <h2 class="font-bold text-gray-900">QR payment</h2>
+                @if (!string.IsNullOrWhiteSpace(Model.ExpiresAtText) && !Model.IsPaid)
+                {
+                    <span class="text-xs font-semibold text-gray-400">Expires @Model.ExpiresAtText</span>
+                }
+            </div>
+
+            @if (Model.IsExpired && !Model.IsPaid)
+            {
+                <div class="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                    Expired
+                </div>
+            }
+
+            @if (Model.HasQrCode)
+            {
+                <div class="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                    <img src="@Model.QrImageUrl"
+                         alt="SePay QR for system payment @Model.TransactionCode"
+                         class="mx-auto aspect-square w-full max-w-[340px] object-contain" />
+                </div>
+            }
+            else
+            {
+                <div class="rounded-2xl border border-amber-100 bg-amber-50 p-5 text-sm text-amber-700">
+                    QR is not available for this payment.
+                </div>
+            }
+        </section>
+
+        <section class="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-50">
+                <h2 class="font-bold text-gray-900">Transfer information</h2>
+                <p class="text-xs text-gray-400 mt-0.5">Use the exact amount and transfer content for automatic matching.</p>
+            </div>
+
+            <div class="divide-y divide-gray-50">
+                @foreach (var row in Model.PaymentInfoRows)
+                {
+                    var copyTargetId = row.CanCopy ? $"system-payment-copy-{Guid.NewGuid():N}" : null;
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-5 py-4">
+                        <span class="text-xs font-semibold uppercase text-gray-400">@row.Label</span>
+                        @if (row.CanCopy && !string.IsNullOrWhiteSpace(copyTargetId))
+                        {
+                            <div class="flex items-center justify-between sm:justify-end gap-2">
+                                <strong id="@copyTargetId" class="text-sm text-gray-900 break-all text-right">@row.Value</strong>
+                                <button type="button"
+                                        data-copy-target="@copyTargetId"
+                                        class="shrink-0 rounded-lg bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-600 hover:bg-orange-100">
+                                    Copy
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <strong class="text-sm text-gray-900 break-all text-right">@row.Value</strong>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="px-5 py-4 bg-gray-50 border-t border-gray-100">
+                <dl class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    <div>
+                        <dt class="text-xs font-semibold text-gray-400">Created</dt>
+                        <dd class="font-semibold text-gray-900">@Model.CreatedAtText</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-semibold text-gray-400">Paid amount</dt>
+                        <dd class="font-semibold text-gray-900">@Model.PaidAmountText</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-semibold text-gray-400">Payment ID</dt>
+                        <dd class="font-mono text-xs text-gray-500 break-all">@Model.PaymentId</dd>
+                    </div>
+                </dl>
+            </div>
+
+            <div class="px-5 py-4 border-t border-gray-100 flex justify-end">
+                <a href="@Model.BackUrl" class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:border-orange-200 hover:text-orange-600">
+                    @Model.BackLabel
+                </a>
+            </div>
+        </section>
+    </div>
+
+    <div class="fixed inset-0 z-50 hidden items-center justify-center bg-gray-900/50 px-4"
+         data-system-payment-modal
+         aria-hidden="true">
+        <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <div class="flex items-start gap-4">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-50 text-xl font-bold text-green-600" data-payment-modal-icon>
+                    OK
+                </div>
+                <div class="min-w-0">
+                    <h2 class="text-lg font-bold text-gray-900" data-payment-modal-title>Payment completed</h2>
+                    <p class="mt-2 text-sm text-gray-500" data-payment-modal-message>
+                        ChainPOS received the SePay webhook and marked this payment as paid.
+                    </p>
+                </div>
+            </div>
+            <div class="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                <button type="button"
+                        class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:border-orange-200 hover:text-orange-600"
+                        data-payment-modal-close>
+                    Close
+                </button>
+                <a href="@Model.BackUrl"
+                   class="inline-flex items-center justify-center rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600">
+                    @Model.BackLabel
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/system-payment-checkout.js" asp-append-version="true"></script>
+}

@@ -1,4 +1,5 @@
 using ChainPOS.Constants;
+using ChainPOS.Services.Import;
 using ChainPOS.Services.Owner;
 using ChainPOS.ViewModels.Owner.Stores;
 using Microsoft.AspNetCore.Authorization;
@@ -11,10 +12,37 @@ namespace ChainPOS.Areas.Owner.Controllers;
 public sealed class StoresController : Controller
 {
     private readonly IOwnerStoreService _storeService;
+    private readonly IBulkImportService _bulkImport;
 
-    public StoresController(IOwnerStoreService storeService)
+    public StoresController(IOwnerStoreService storeService, IBulkImportService bulkImport)
     {
         _storeService = storeService;
+        _bulkImport = bulkImport;
+    }
+
+    public IActionResult Import()
+    {
+        return View();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Import(IFormFile? file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            TempData["ErrorMessage"] = "Import file is required.";
+            return View();
+        }
+
+        var result = await _bulkImport.ImportStoresAsync(file, cancellationToken);
+        return View("~/Views/Shared/Imports/Result.cshtml", result);
+    }
+
+    public IActionResult Template()
+    {
+        const string csv = "Name,Code,Address,Phone,Status\nDemo Store,DEMO-STORE-02,Demo address,0909000003,Active\n";
+        return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "stores-template.csv");
     }
 
     public async Task<IActionResult> Index(string? search, string? status, CancellationToken cancellationToken)

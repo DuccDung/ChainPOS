@@ -49,6 +49,16 @@ public sealed class SubscriptionsController : Controller
             return View(model);
         }
 
+        if (string.Equals(model.PaymentMethod, PaymentMethods.SePay, StringComparison.OrdinalIgnoreCase)
+            && result.PaymentId.HasValue)
+        {
+            TempData["SuccessMessage"] = "Tenant subscription created. Complete the SePay transfer using the QR code below.";
+            return RedirectToAction(
+                "Details",
+                "SystemPayments",
+                new { area = "Admin", id = result.PaymentId.Value });
+        }
+
         TempData["SuccessMessage"] = "Tenant subscription created.";
         return model.TenantId.HasValue
             ? RedirectToAction("Details", "Tenants", new { id = model.TenantId.Value })

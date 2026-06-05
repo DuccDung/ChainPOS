@@ -1,0 +1,115 @@
+@using ChainPOS.Constants
+@model ChainPOS.ViewModels.Sales.PaymentIndexViewModel
+@{
+    string DateText(DateOnly? value) => value?.ToString("yyyy-MM-dd") ?? string.Empty;
+    string StatusBadge(string status) => status == PaymentStatuses.Paid
+        ? "badge-delivered px-2.5 py-0.5 rounded-full text-xs font-semibold"
+        : status == PaymentStatuses.Cancelled || status == PaymentStatuses.Failed
+            ? "badge-cancelled px-2.5 py-0.5 rounded-full text-xs font-semibold"
+            : "badge-pending px-2.5 py-0.5 rounded-full text-xs font-semibold";
+}
+
+<div class="flex flex-col gap-5" data-live-page="payments" data-live-store-id="@(Model.StoreId?.ToString() ?? "")">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-gray-400 mb-0.5">
+                <a asp-area="@Model.AreaName" asp-controller="Dashboard" asp-action="Index" class="hover:text-orange-500">Dashboard</a>
+                <span>/</span><span class="text-gray-600 font-medium">Sales</span>
+                <span>/</span><span class="text-orange-500 font-medium">Payments</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">POS Payments</h1>
+        </div>
+        <a asp-area="@Model.AreaName" asp-controller="Orders" asp-action="Index" asp-route-storeId="@Model.StoreId" class="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-700 hover:bg-orange-100">Orders</a>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-xs text-gray-400 mb-2">All Payments</p><p class="text-2xl font-bold text-gray-900">@Model.TotalPayments</p><p class="text-xs text-gray-400 mt-1">@Model.Stores.Count accessible store(s)</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-xs text-green-600 font-semibold mb-2">Paid</p><p class="text-2xl font-bold text-green-600">@Model.PaidPayments</p><p class="text-xs text-gray-400 mt-1">Completed records</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-xs text-amber-600 font-semibold mb-2">Pending</p><p class="text-2xl font-bold text-amber-500">@Model.PendingPayments</p><p class="text-xs text-gray-400 mt-1">Waiting to finish</p></div>
+        <div class="bg-white rounded-2xl p-4 border border-orange-100 shadow-sm"><p class="text-xs text-gray-400 mb-2">Paid Amount</p><p class="text-2xl font-bold text-gray-900">@Model.PaidAmount.ToString("#,##0.##")</p><p class="text-xs text-gray-400 mt-1">Non-cancelled orders</p></div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+        <div class="flex flex-col md:flex-row md:items-center justify-between px-5 py-4 gap-3 border-b border-gray-50">
+            <div>
+                <h3 class="font-bold text-gray-900">Payment List</h3>
+                <p class="text-xs text-gray-400 mt-0.5">Showing @Model.Payments.Count record(s)</p>
+            </div>
+            <form asp-area="@Model.AreaName" asp-controller="Payments" asp-action="Index" method="get" class="flex items-center gap-2 flex-wrap">
+                <div class="relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" /></svg>
+                    <input asp-for="Search" placeholder="Order or transaction..." class="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 w-56" />
+                </div>
+                <select asp-for="StoreId" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 text-gray-600">
+                    <option value="">All Stores</option>
+                    @foreach (var store in Model.Stores)
+                    {
+                        <option value="@store.Id">@store.Name (@store.Code)</option>
+                    }
+                </select>
+                <select asp-for="Method" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 text-gray-600">
+                    <option value="">All Methods</option>
+                    <option value="@PaymentMethods.Cash">Cash</option>
+                    <option value="@PaymentMethods.Card">Card</option>
+                    <option value="@PaymentMethods.BankTransfer">Bank Transfer</option>
+                    <option value="@PaymentMethods.Momo">Momo</option>
+                    <option value="@PaymentMethods.ZaloPay">ZaloPay</option>
+                    <option value="@PaymentMethods.Other">Other</option>
+                </select>
+                <select asp-for="Status" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 text-gray-600">
+                    <option value="">All Statuses</option>
+                    <option value="@PaymentStatuses.Pending">Pending</option>
+                    <option value="@PaymentStatuses.Paid">Paid</option>
+                    <option value="@PaymentStatuses.Failed">Failed</option>
+                    <option value="@PaymentStatuses.Cancelled">Cancelled</option>
+                    <option value="@PaymentStatuses.Refunded">Refunded</option>
+                </select>
+                <input asp-for="Date" type="date" value="@DateText(Model.Date)" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 text-gray-600" />
+                <button type="submit" class="px-4 py-2 bg-orange-500 text-white text-sm font-semibold rounded-xl hover:bg-orange-600">Filter</button>
+            </form>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full data-table text-sm">
+                <thead>
+                    <tr class="bg-amber-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                        <th class="px-5 py-3 text-left">Order</th>
+                        <th class="px-5 py-3 text-left">Store</th>
+                        <th class="px-5 py-3 text-left">Method</th>
+                        <th class="px-5 py-3 text-right">Amount</th>
+                        <th class="px-5 py-3 text-left">Transaction</th>
+                        <th class="px-5 py-3 text-left">Status</th>
+                        <th class="px-5 py-3 text-left">Paid At</th>
+                        <th class="px-5 py-3 text-left">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    @if (Model.Payments.Count == 0)
+                    {
+                        <tr><td colspan="8" class="px-5 py-10 text-center text-sm text-gray-400">No payments found.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var payment in Model.Payments)
+                        {
+                            <tr class="hover:bg-orange-50/30">
+                                <td class="px-5 py-3.5">
+                                    <p class="font-mono text-sm text-orange-500 font-semibold">@payment.OrderCode</p>
+                                    <p class="text-xs text-gray-400">@payment.OrderStatus / @payment.OrderPaymentStatus</p>
+                                </td>
+                                <td class="px-5 py-3.5"><p class="font-semibold text-gray-800">@payment.StoreName</p><p class="font-mono text-xs text-gray-400">@payment.StoreCode</p></td>
+                                <td class="px-5 py-3.5 text-gray-600">@payment.Method</td>
+                                <td class="px-5 py-3.5 text-right font-bold text-gray-900">@payment.Amount.ToString("#,##0.##")</td>
+                                <td class="px-5 py-3.5 font-mono text-xs text-gray-500">@(payment.TransactionCode ?? "-")</td>
+                                <td class="px-5 py-3.5"><span class="@StatusBadge(payment.Status)">@payment.Status</span></td>
+                                <td class="px-5 py-3.5 text-gray-400 text-xs">@(payment.PaidAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                                <td class="px-5 py-3.5">
+                                    <a asp-area="@Model.AreaName" asp-controller="Orders" asp-action="Details" asp-route-id="@payment.OrderId" class="px-2.5 py-1 bg-orange-50 text-orange-600 text-xs font-semibold rounded-lg hover:bg-orange-100">Receipt</a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

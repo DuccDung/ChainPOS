@@ -23,7 +23,7 @@ public sealed class TenantSubscriptionCreateViewModel
 
     public bool CreatePendingPayment { get; set; } = true;
 
-    public string PaymentMethod { get; set; } = PaymentMethods.BankTransfer;
+    public string PaymentMethod { get; set; } = PaymentMethods.SePay;
 
     [StringLength(500)]
     public string? InvoiceUrl { get; set; }

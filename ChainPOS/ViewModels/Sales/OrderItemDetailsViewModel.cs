@@ -4,6 +4,8 @@ public sealed class OrderItemDetailsViewModel
 {
     public string ProductName { get; set; } = string.Empty;
 
+    public string? ImageUrl { get; set; }
+
     public string? Sku { get; set; }
 
     public decimal Quantity { get; set; }

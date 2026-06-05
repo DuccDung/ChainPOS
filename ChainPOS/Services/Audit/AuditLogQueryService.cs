@@ -29,12 +29,23 @@ public sealed class AuditLogQueryService : IAuditLogQueryService
         var query = BuildFilteredQuery(isAdmin, effectiveFilter);
 
         var totalEvents = await query.CountAsync(cancellationToken);
-        var actionsForSeverity = await query.Select(x => x.Action).ToListAsync(cancellationToken);
         var distinctUsers = await query
             .Where(x => x.UserId != null)
             .Select(x => x.UserId)
             .Distinct()
             .CountAsync(cancellationToken);
+        var warningEvents = await query.CountAsync(x =>
+            x.Action.Contains("Delete") ||
+            x.Action.Contains("Cancel") ||
+            x.Action.Contains("Lock") ||
+            x.Action.Contains("Suspend") ||
+            x.Action.Contains("Disable") ||
+            x.Action.Contains("Failed"),
+            cancellationToken);
+        var criticalEvents = await query.CountAsync(x =>
+            x.Action.Contains("CancelTenant") ||
+            x.Action.Contains("DeleteStore"),
+            cancellationToken);
 
         var totalPages = Math.Max(1, (int)Math.Ceiling(totalEvents / (double)effectiveFilter.PageSize));
         if (effectiveFilter.Page > totalPages)
@@ -43,7 +54,7 @@ public sealed class AuditLogQueryService : IAuditLogQueryService
         }
 
         var skip = (effectiveFilter.Page - 1) * effectiveFilter.PageSize;
-        var logs = await query
+        var logs = await BuildFilteredQuery(isAdmin, effectiveFilter, includeNavigation: true)
             .OrderByDescending(x => x.CreatedAt)
             .ThenByDescending(x => x.Id)
             .Skip(skip)
@@ -62,8 +73,8 @@ public sealed class AuditLogQueryService : IAuditLogQueryService
             Logs = logs.Select(MapLog).ToList(),
             TotalEvents = totalEvents,
             DistinctUsers = distinctUsers,
-            WarningEvents = actionsForSeverity.Count(IsWarningAction),
-            CriticalEvents = actionsForSeverity.Count(IsCriticalAction),
+            WarningEvents = warningEvents,
+            CriticalEvents = criticalEvents,
             Page = effectiveFilter.Page,
             PageSize = effectiveFilter.PageSize,
             TotalPages = totalPages
@@ -97,12 +108,19 @@ public sealed class AuditLogQueryService : IAuditLogQueryService
         };
     }
 
-    private IQueryable<AuditLog> BuildFilteredQuery(bool isAdmin, AuditLogFilterViewModel filter)
+    private IQueryable<AuditLog> BuildFilteredQuery(
+        bool isAdmin,
+        AuditLogFilterViewModel filter,
+        bool includeNavigation = false)
     {
-        IQueryable<AuditLog> query = BuildAccessQuery(isAdmin, filter.TenantId)
-            .Include(x => x.Tenant)
-            .Include(x => x.Store)
-            .Include(x => x.User);
+        IQueryable<AuditLog> query = BuildAccessQuery(isAdmin, filter.TenantId);
+        if (includeNavigation)
+        {
+            query = query
+                .Include(x => x.Tenant)
+                .Include(x => x.Store)
+                .Include(x => x.User);
+        }
 
         if (filter.StoreId.HasValue)
         {

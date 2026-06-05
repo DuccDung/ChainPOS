@@ -2,7 +2,16 @@
 @using System.Security.Claims
 @{
     var title = ViewData["Title"]?.ToString() ?? "Dashboard";
-    var role = ViewData["AppRole"]?.ToString() ?? "Admin";
+    var claimRole = User.IsInRole(AppRoles.Admin)
+        ? "Admin"
+        : User.IsInRole(AppRoles.Owner)
+            ? "Owner"
+            : User.IsInRole(AppRoles.Staff)
+                ? "Staff"
+                : "Admin";
+    var role = string.IsNullOrWhiteSpace(ViewData["AppRole"]?.ToString())
+        ? claimRole
+        : ViewData["AppRole"]!.ToString();
     var userName = User.FindFirstValue(AppClaimTypes.FullName) ?? User.Identity?.Name ?? "User";
     var initial = string.IsNullOrWhiteSpace(userName) ? "U" : userName.Trim()[0].ToString().ToUpperInvariant();
 }

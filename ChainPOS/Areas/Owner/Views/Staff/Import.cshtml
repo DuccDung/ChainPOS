@@ -1,0 +1,6 @@
+@{
+    ViewData["Title"] = "Import Staff";
+    ViewData["ActiveMenu"] = "staff";
+}
+
+<partial name="~/Views/Shared/Imports/_UploadForm.cshtml" model="@(new ChainPOS.ViewModels.Imports.BulkImportUploadViewModel { Title = "Import Staff", AreaName = "Owner", ControllerName = "Staff", ActionName = "Import", TemplateAction = "Template" })" />

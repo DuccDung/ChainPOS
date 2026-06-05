@@ -37,7 +37,7 @@ public interface ISubscriptionManagementService
         Guid? tenantId,
         CancellationToken cancellationToken = default);
 
-    Task<(bool Succeeded, string? Error, Guid? SubscriptionId)> CreateTenantSubscriptionAsync(
+    Task<(bool Succeeded, string? Error, Guid? SubscriptionId, Guid? PaymentId)> CreateTenantSubscriptionAsync(
         TenantSubscriptionCreateViewModel model,
         string? currentUserId,
         CancellationToken cancellationToken = default);

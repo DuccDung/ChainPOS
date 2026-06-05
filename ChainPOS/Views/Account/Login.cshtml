@@ -13,6 +13,7 @@
     <title>@ViewData["Title"] - ChainPOS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; }
@@ -135,16 +136,30 @@
             <h2 class="text-3xl font-bold text-gray-900 mb-1">Đăng nhập</h2>
             <p class="text-gray-500 text-sm mb-7">Truy cập dashboard theo vai trò của bạn</p>
 
+            @if (TempData["SuccessMessage"] is string successMessage)
+            {
+                <div class="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">@successMessage</div>
+            }
+            @if (TempData["ErrorMessage"] is string errorMessage)
+            {
+                <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">@errorMessage</div>
+            }
+
             <div class="mb-6">
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Vai trò hệ thống</p>
                 <div class="flex flex-wrap gap-2">
-                    <button type="button" data-login-email="admin@chainpos.local" class="role-pill px-3 py-1.5 rounded-full text-xs font-semibold border transition-all bg-orange-500 text-white border-orange-500">Admin</button>
-                    <button type="button" data-login-email="owner@demo.local" class="role-pill px-3 py-1.5 rounded-full text-xs font-semibold border transition-all bg-gray-50 text-gray-600 border-gray-200 hover:border-orange-300">Owner</button>
-                    <button type="button" data-login-email="staff01@demo.local" class="role-pill px-3 py-1.5 rounded-full text-xs font-semibold border transition-all bg-gray-50 text-gray-600 border-gray-200 hover:border-orange-300">Staff</button>
+                    <button type="button" data-login-role="admin" data-login-email="admin@chainpos.local" data-login-password="Admin@123" class="role-pill px-3 py-1.5 rounded-full text-xs font-semibold border transition-all bg-orange-500 text-white border-orange-500">Admin</button>
+                    <button type="button" data-login-role="owner" data-login-email="owner@demo.local" data-login-password="Owner@123" class="role-pill px-3 py-1.5 rounded-full text-xs font-semibold border transition-all bg-gray-50 text-gray-600 border-gray-200 hover:border-orange-300">Owner</button>
+                    <button type="button" data-login-role="staff" data-login-email="staff01@demo.local" data-login-password="Staff@123" class="role-pill px-3 py-1.5 rounded-full text-xs font-semibold border transition-all bg-gray-50 text-gray-600 border-gray-200 hover:border-orange-300">Staff</button>
                 </div>
             </div>
 
-            <form asp-action="Login" asp-controller="Account" method="post" novalidate>
+            <form asp-action="Login"
+                  asp-controller="Account"
+                  method="post"
+                  novalidate
+                  data-loading-title="Dang dang nhap"
+                  data-loading-message="Vui long cho trong khi he thong xac thuc tai khoan.">
                 @Html.AntiForgeryToken()
                 <input asp-for="ReturnUrl" type="hidden" />
 
@@ -168,7 +183,7 @@
                 <div class="mb-5">
                     <div class="flex items-center justify-between mb-1.5">
                         <label asp-for="Password" class="text-sm font-medium text-gray-700"></label>
-                        <a href="#" class="text-xs text-orange-500 hover:text-orange-600 font-medium">Quên mật khẩu?</a>
+                        <a asp-action="ForgotPassword" asp-controller="Account" id="forgotPasswordLink" class="hidden text-xs text-orange-500 hover:text-orange-600 font-medium">Quên mật khẩu?</a>
                     </div>
                     <div class="relative">
                         <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
@@ -210,37 +225,71 @@
                 <div class="flex-1 h-px bg-gray-100"></div>
             </div>
 
-            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                <div class="flex items-start gap-2.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                        <p class="text-xs font-semibold text-amber-800 mb-1">Tài khoản demo</p>
-                        <p class="text-xs text-amber-700">Admin: admin@chainpos.local / Admin@123</p>
-                        <p class="text-xs text-amber-700">Owner: owner@demo.local / Owner@123</p>
-                        <p class="text-xs text-amber-700">Staff: staff01@demo.local / Staff@123</p>
-                    </div>
-                </div>
-            </div>
+            @* <div class="bg-amber-50 border border-amber-200 rounded-xl p-4"> *@
+            @*     <div class="flex items-start gap-2.5"> *@
+            @*         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"> *@
+            @*             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /> *@
+            @*         </svg> *@
+            @*         <div> *@
+            @*             <p class="text-xs font-semibold text-amber-800 mb-1">Tài khoản demo</p> *@
+            @*             <p class="text-xs text-amber-700">Admin: admin@chainpos.local / Admin@123</p> *@
+            @*             <p class="text-xs text-amber-700">Owner: owner@demo.local / Owner@123</p> *@
+            @*             <p class="text-xs text-amber-700">Staff: staff01@demo.local / Staff@123</p> *@
+            @*         </div> *@
+            @*     </div> *@
+            @* </div> *@
 
             <p class="text-center text-xs text-gray-400 mt-6">© 2026 ChainPOS · SaaS Retail Platform</p>
         </div>
     </div>
 
+    <partial name="_LoadingOverlay" />
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
     <script src="~/lib/jquery-validation-unobtrusive/dist/jquery.validate.unobtrusive.min.js"></script>
+    <script src="~/js/dashboard.js" asp-append-version="true"></script>
     <script>
+        const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+
+        const setForgotPasswordVisibility = (role) => {
+            forgotPasswordLink.classList.toggle('hidden', role !== 'owner');
+        };
+
+        const clearValidationState = () => {
+            document.querySelectorAll('.input-validation-error').forEach((element) => {
+                element.classList.remove('input-validation-error');
+                element.removeAttribute('aria-invalid');
+            });
+            document.querySelectorAll('[data-valmsg-for]').forEach((element) => {
+                element.textContent = '';
+                element.classList.remove('field-validation-error');
+                element.classList.add('field-validation-valid');
+            });
+            document.querySelectorAll('[data-valmsg-summary] ul').forEach((list) => {
+                list.innerHTML = '';
+            });
+            document.querySelectorAll('[data-valmsg-summary]').forEach((summary) => {
+                summary.classList.remove('validation-summary-errors');
+                summary.classList.add('validation-summary-valid');
+            });
+        };
+
         document.querySelectorAll('.role-pill').forEach((button) => {
             button.addEventListener('click', () => {
                 document.getElementById('UserNameOrEmail').value = button.dataset.loginEmail || '';
+                document.getElementById('Password').value = button.dataset.loginPassword || '';
+                clearValidationState();
                 document.querySelectorAll('.role-pill').forEach((item) => {
                     const isActive = item === button;
                     item.className = `role-pill px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${isActive ? 'bg-orange-500 text-white border-orange-500' : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-orange-300'}`;
                 });
+                setForgotPasswordVisibility(button.dataset.loginRole);
             });
         });
+
+        const activeRoleButton = document.querySelector('.role-pill.bg-orange-500');
+        setForgotPasswordVisibility(activeRoleButton?.dataset.loginRole);
 
         document.getElementById('togglePassword').addEventListener('click', () => {
             const password = document.getElementById('Password');

@@ -14,6 +14,8 @@ public sealed class InventoryListItemViewModel
 
     public string ProductName { get; set; } = string.Empty;
 
+    public string? ImageUrl { get; set; }
+
     public string? Sku { get; set; }
 
     public string? Barcode { get; set; }

@@ -9,6 +9,8 @@
   let unread = 0;
   let dropdown;
   let toastRoot;
+  let audioUnlocked = false;
+  let soundEnabled = window.localStorage?.getItem('chainpos.liveSound') !== 'off';
 
   const read = (payload, camelName, pascalName) => payload?.[camelName] ?? payload?.[pascalName];
   const normalizeId = value => (value || '').toString().toLowerCase();
@@ -36,6 +38,12 @@
     return normalizeId(document.querySelector('[data-live-store-id]')?.dataset.liveStoreId);
   }
 
+  function isCurrentStoreEvent(payload) {
+    const pageStoreId = currentStoreId();
+    if (!pageStoreId) return true;
+    return pageStoreId === normalizeId(read(payload, 'storeId', 'StoreId'));
+  }
+
   function ensureToastRoot() {
     if (toastRoot) return toastRoot;
     toastRoot = document.createElement('div');
@@ -56,7 +64,10 @@
     dropdown.innerHTML = `
       <div class="live-notification-header">
         <span>Live updates</span>
-        <button type="button" data-live-clear>Clear</button>
+        <div class="live-notification-actions">
+          <button type="button" data-live-sound>${soundEnabled ? 'Sound on' : 'Sound off'}</button>
+          <button type="button" data-live-clear>Clear</button>
+        </div>
       </div>
       <div class="live-notification-list" data-live-list>
         <div class="live-empty">No live updates yet.</div>
@@ -74,12 +85,45 @@
       unread = 0;
       renderBadge();
     });
+    dropdown.querySelector('[data-live-sound]')?.addEventListener('click', event => {
+      soundEnabled = !soundEnabled;
+      window.localStorage?.setItem('chainpos.liveSound', soundEnabled ? 'on' : 'off');
+      event.currentTarget.textContent = soundEnabled ? 'Sound on' : 'Sound off';
+      unlockAudio();
+    });
     document.addEventListener('click', event => {
       if (!dropdown || dropdown.classList.contains('hidden')) return;
       if (dropdown.contains(event.target) || button.contains(event.target)) return;
       dropdown.classList.add('hidden');
     });
     return dropdown;
+  }
+
+  function unlockAudio() {
+    audioUnlocked = true;
+  }
+
+  function playNotificationSound(kind) {
+    if (!soundEnabled || !audioUnlocked) return;
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const context = new AudioContext();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = kind === 'order' ? 880 : kind === 'billing' ? 740 : 620;
+      gain.gain.setValueAtTime(0.0001, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.08, context.currentTime + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(context.currentTime);
+      oscillator.stop(context.currentTime + 0.2);
+      window.setTimeout(() => context.close(), 300);
+    } catch {
+      // Audio is best-effort; browser policies can still block it.
+    }
   }
 
   function renderBadge() {
@@ -122,6 +166,7 @@
 
   function showToast(title, message, kind = 'info') {
     pushNotification(title, message);
+    playNotificationSound(kind);
 
     const root = ensureToastRoot();
     const toast = document.createElement('div');
@@ -354,10 +399,16 @@
     const productName = read(payload, 'productName', 'ProductName') || 'Product';
     const changeType = read(payload, 'changeType', 'ChangeType') || 'Inventory';
     const quantity = read(payload, 'quantity', 'Quantity');
+    const message = `${changeType}: ${productName} now has ${formatNumber(quantity)} in stock.`;
+    if (!isCurrentStoreEvent(payload)) {
+      pushNotification('Inventory updated', message);
+      return;
+    }
+
     const rowUpdated = updateInventoryRows(payload);
     const cardUpdated = updatePosCards(payload);
 
-    showToast('Inventory updated', `${changeType}: ${productName} now has ${formatNumber(quantity)} in stock.`, 'inventory');
+    showToast('Inventory updated', message, 'inventory');
     const page = currentLivePage();
     if ((page === 'inventory' && !rowUpdated) || (page === 'pos' && !cardUpdated)) {
       showReloadBanner('Inventory changed in another session. Reload to show new rows or filters.');
@@ -370,11 +421,20 @@
   function handleOrderCreated(payload) {
     const orderCode = read(payload, 'orderCode', 'OrderCode') || 'New order';
     const total = read(payload, 'totalAmount', 'TotalAmount');
-    showToast('Order created', `${orderCode} completed for ${formatNumber(total)}.`, 'order');
+    const message = `${orderCode} completed for ${formatNumber(total)}.`;
+    if (!isCurrentStoreEvent(payload)) {
+      pushNotification('Order created', message);
+      return;
+    }
+
+    showToast('Order created', message, 'order');
     if (currentLivePage() === 'orders') {
       if (!prependOrderRow(payload)) {
         showReloadBanner(`${orderCode} was created in another session. Reload to show it in the list.`);
       }
+    }
+    if (currentLivePage() === 'pos') {
+      showReloadBanner(`${orderCode} changed the POS queue. Reload to refresh queued orders.`);
     }
     if (currentLivePage() === 'dashboard') {
       incrementDashboardMetric('orders-today');
@@ -388,6 +448,12 @@
     const orderCode = read(payload, 'orderCode', 'OrderCode') || 'Order';
     const paymentStatus = read(payload, 'paymentStatus', 'PaymentStatus') || 'Cancelled';
     const orderStatus = read(payload, 'orderStatus', 'OrderStatus') || 'Cancelled';
+    const message = `${orderCode} was cancelled.`;
+    if (!isCurrentStoreEvent(payload)) {
+      pushNotification('Order cancelled', message);
+      return;
+    }
+
     let updated = false;
 
     document.querySelectorAll('[data-realtime-order-row]').forEach(row => {
@@ -406,7 +472,7 @@
       updated = true;
     });
 
-    showToast('Order cancelled', `${orderCode} was cancelled and inventory was returned.`, 'order');
+    showToast('Order cancelled', message, 'order');
     if (currentLivePage() === 'orders' && !updated) {
       showReloadBanner(`${orderCode} was cancelled in another session. Reload to refresh the current list.`);
     }
@@ -419,6 +485,12 @@
     const shiftId = normalizeId(read(payload, 'shiftId', 'ShiftId'));
     const status = read(payload, 'status', 'Status') || 'Updated';
     const storeName = read(payload, 'storeName', 'StoreName') || 'Store';
+    const message = `${storeName} shift is now ${status}.`;
+    if (!isCurrentStoreEvent(payload)) {
+      pushNotification('Shift updated', message);
+      return;
+    }
+
     let updated = false;
 
     document.querySelectorAll('[data-realtime-shift-row]').forEach(row => {
@@ -440,7 +512,7 @@
       updated = true;
     });
 
-    showToast('Shift updated', `${storeName} shift is now ${status}.`, 'shift');
+    showToast('Shift updated', message, 'shift');
     if ((currentLivePage() === 'shifts' || currentLivePage() === 'pos') && !updated) {
       showReloadBanner(`A shift changed at ${storeName}. Reload to refresh available actions.`);
     }
@@ -471,6 +543,8 @@
   }
 
   ensureDropdown();
+  document.addEventListener('pointerdown', unlockAudio, { once: true });
+  document.addEventListener('keydown', unlockAudio, { once: true });
 
   const connection = new signalR.HubConnectionBuilder()
     .withUrl('/hubs/chainpos')

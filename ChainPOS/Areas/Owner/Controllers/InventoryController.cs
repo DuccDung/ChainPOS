@@ -1,4 +1,5 @@
 using ChainPOS.Constants;
+using ChainPOS.Services.Import;
 using ChainPOS.Services.Inventory;
 using ChainPOS.ViewModels.Inventory;
 using Microsoft.AspNetCore.Authorization;
@@ -12,10 +13,37 @@ public sealed class InventoryController : Controller
 {
     private const string AreaName = "Owner";
     private readonly IInventoryService _inventoryService;
+    private readonly IBulkImportService _bulkImport;
 
-    public InventoryController(IInventoryService inventoryService)
+    public InventoryController(IInventoryService inventoryService, IBulkImportService bulkImport)
     {
         _inventoryService = inventoryService;
+        _bulkImport = bulkImport;
+    }
+
+    public IActionResult BulkImport()
+    {
+        return View();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BulkImport(IFormFile? file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            TempData["ErrorMessage"] = "Import file is required.";
+            return View();
+        }
+
+        var result = await _bulkImport.ImportInventoryAsync(AreaName, file, cancellationToken);
+        return View("~/Views/Shared/Imports/Result.cshtml", result);
+    }
+
+    public IActionResult Template()
+    {
+        const string csv = "StoreCode,Sku,Quantity,MinQuantity,Reason\nTZ-HCM-01,LOGI-MX3S-GR,10,3,Bulk import\n";
+        return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "inventory-template.csv");
     }
 
     public async Task<IActionResult> Index(Guid? storeId, string? search, string? stockStatus, CancellationToken cancellationToken)

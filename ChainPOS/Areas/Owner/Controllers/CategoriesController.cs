@@ -1,4 +1,5 @@
 using ChainPOS.Constants;
+using ChainPOS.Services.Import;
 using ChainPOS.Services.Owner;
 using ChainPOS.ViewModels.Owner.Categories;
 using Microsoft.AspNetCore.Authorization;
@@ -11,10 +12,37 @@ namespace ChainPOS.Areas.Owner.Controllers;
 public sealed class CategoriesController : Controller
 {
     private readonly IOwnerCategoryService _categoryService;
+    private readonly IBulkImportService _bulkImport;
 
-    public CategoriesController(IOwnerCategoryService categoryService)
+    public CategoriesController(IOwnerCategoryService categoryService, IBulkImportService bulkImport)
     {
         _categoryService = categoryService;
+        _bulkImport = bulkImport;
+    }
+
+    public IActionResult Import()
+    {
+        return View();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Import(IFormFile? file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            TempData["ErrorMessage"] = "Import file is required.";
+            return View();
+        }
+
+        var result = await _bulkImport.ImportCategoriesAsync(file, cancellationToken);
+        return View("~/Views/Shared/Imports/Result.cshtml", result);
+    }
+
+    public IActionResult Template()
+    {
+        const string csv = "Name,Description,IsActive\nAccessories,Phone and computer accessories,true\n";
+        return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "categories-template.csv");
     }
 
     public async Task<IActionResult> Index(string? search, string? status, CancellationToken cancellationToken)

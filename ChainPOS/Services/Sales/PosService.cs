@@ -125,6 +125,28 @@ public sealed class PosService : IPosService
             })
             .ToListAsync(cancellationToken);
 
+        model.PendingOrders = await _db.Orders
+            .AsNoTracking()
+            .Where(x => x.TenantId == tenantId
+                && x.StoreId == selectedStoreId.Value
+                && x.OrderStatus == OrderStatuses.New
+                && x.PaymentStatus == OrderPaymentStatuses.Unpaid)
+            .OrderBy(x => x.CreatedAt)
+            .Select(x => new PosPendingOrderViewModel
+            {
+                Id = x.Id,
+                OrderCode = x.OrderCode,
+                ItemCount = x.OrderItems.Count,
+                TotalAmount = x.TotalAmount,
+                PaymentMethod = x.Payments
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Select(p => p.Method)
+                    .FirstOrDefault() ?? PaymentMethods.Cash,
+                StaffName = x.StaffUser != null ? x.StaffUser.FullName : null,
+                CreatedAt = x.CreatedAt
+            })
+            .ToListAsync(cancellationToken);
+
         return model;
     }
 
@@ -146,6 +168,7 @@ public sealed class PosService : IPosService
         {
             return (false, "Payment method is invalid.", null);
         }
+        var isHold = string.Equals(model.CheckoutMode, "hold", StringComparison.OrdinalIgnoreCase);
 
         var validItems = model.Items
             .Where(x => x.ProductId.HasValue && x.Quantity > 0)
@@ -217,7 +240,8 @@ public sealed class PosService : IPosService
 
         var taxAmount = 0m;
         var totalAmount = subTotal - model.DiscountAmount + taxAmount;
-        if (string.Equals(model.PaymentMethod, PaymentMethods.Cash, StringComparison.OrdinalIgnoreCase) &&
+        if (!isHold &&
+            string.Equals(model.PaymentMethod, PaymentMethods.Cash, StringComparison.OrdinalIgnoreCase) &&
             model.CustomerPaidAmount < totalAmount)
         {
             return (false, "Customer paid amount is not enough.", null);
@@ -236,8 +260,8 @@ public sealed class PosService : IPosService
             DiscountAmount = model.DiscountAmount,
             TaxAmount = taxAmount,
             TotalAmount = totalAmount,
-            PaymentStatus = OrderPaymentStatuses.Paid,
-            OrderStatus = OrderStatuses.Completed,
+            PaymentStatus = isHold ? OrderPaymentStatuses.Unpaid : OrderPaymentStatuses.Paid,
+            OrderStatus = isHold ? OrderStatuses.New : OrderStatuses.Completed,
             Note = string.IsNullOrWhiteSpace(model.Note) ? null : model.Note.Trim(),
             CreatedAt = DateTime.UtcNow,
             CreatedBy = userId
@@ -262,28 +286,31 @@ public sealed class PosService : IPosService
                 LineTotal = lineTotal
             });
 
-            var inventory = inventoryRows[product.ProductId];
-            var before = inventory.Quantity;
-            inventory.Quantity -= item.Quantity;
-            inventory.UpdatedAt = DateTime.UtcNow;
-            inventory.UpdatedBy = userId;
-
-            _db.InventoryTransactions.Add(new InventoryTransaction
+            if (!isHold)
             {
-                Id = Guid.NewGuid(),
-                TenantId = tenantId,
-                StoreId = storeId,
-                ProductId = product.ProductId,
-                Type = InventoryTransactionTypes.Sale,
-                Quantity = item.Quantity,
-                BeforeQuantity = before,
-                AfterQuantity = inventory.Quantity,
-                Reason = $"POS sale {order.OrderCode}",
-                ReferenceType = nameof(Order),
-                ReferenceId = order.Id.ToString(),
-                CreatedBy = userId,
-                CreatedAt = DateTime.UtcNow
-            });
+                var inventory = inventoryRows[product.ProductId];
+                var before = inventory.Quantity;
+                inventory.Quantity -= item.Quantity;
+                inventory.UpdatedAt = DateTime.UtcNow;
+                inventory.UpdatedBy = userId;
+
+                _db.InventoryTransactions.Add(new InventoryTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    StoreId = storeId,
+                    ProductId = product.ProductId,
+                    Type = InventoryTransactionTypes.Sale,
+                    Quantity = item.Quantity,
+                    BeforeQuantity = before,
+                    AfterQuantity = inventory.Quantity,
+                    Reason = $"POS sale {order.OrderCode}",
+                    ReferenceType = nameof(Order),
+                    ReferenceId = order.Id.ToString(),
+                    CreatedBy = userId,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
         }
 
         _db.Payments.Add(new Payment
@@ -294,14 +321,14 @@ public sealed class PosService : IPosService
             Method = model.PaymentMethod,
             Amount = totalAmount,
             TransactionCode = string.IsNullOrWhiteSpace(model.TransactionCode) ? null : model.TransactionCode.Trim(),
-            PaidAt = DateTime.UtcNow,
-            Status = PaymentStatuses.Paid,
+            PaidAt = isHold ? null : DateTime.UtcNow,
+            Status = isHold ? PaymentStatuses.Pending : PaymentStatuses.Paid,
             CreatedAt = DateTime.UtcNow
         });
 
         await _db.SaveChangesAsync(cancellationToken);
         await _auditLog.LogAsync(
-            "CreateOrder",
+            isHold ? "HoldOrder" : "CreateOrder",
             nameof(Order),
             order.Id.ToString(),
             newValue: $"OrderCode={order.OrderCode}; Total={order.TotalAmount:#,##0.##}; Items={validItems.Count}",
@@ -309,9 +336,168 @@ public sealed class PosService : IPosService
             storeId: storeId,
             cancellationToken: cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        if (isHold)
+        {
+            await NotifyOrderRealtimeAsync(tenantId, storeId, userId, order, validItems.Count, cancellationToken);
+        }
+        else
+        {
+            await NotifyCheckoutRealtimeAsync(
+                tenantId,
+                storeId,
+                userId,
+                order,
+                validItems,
+                productMap,
+                inventoryRows,
+                cancellationToken);
+        }
+
+        return (true, null, order.Id);
+    }
+
+    public async Task<(bool Succeeded, string? Error, Guid? OrderId)> CompletePendingOrderAsync(
+        Guid orderId,
+        CancellationToken cancellationToken = default)
+    {
+        var tenantId = RequireTenantId();
+        var userId = RequireUserId();
+        var order = await _db.Orders
+            .Include(x => x.OrderItems)
+            .Include(x => x.Payments)
+            .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.Id == orderId, cancellationToken);
+        if (order is null)
+        {
+            return (false, "Pending order not found.", null);
+        }
+
+        if (!await _storeAccess.CanAccessStoreAsync(order.StoreId, cancellationToken))
+        {
+            return (false, "You do not have access to this order.", null);
+        }
+
+        if (order.OrderStatus != OrderStatuses.New || order.PaymentStatus != OrderPaymentStatuses.Unpaid)
+        {
+            return (false, "Only unpaid queued orders can be completed.", null);
+        }
+
+        var openShift = await _db.Shifts.FirstOrDefaultAsync(
+            x => x.TenantId == tenantId
+                && x.StoreId == order.StoreId
+                && x.OpenedBy == userId
+                && x.Status == ShiftStatuses.Open,
+            cancellationToken);
+        if (openShift is null)
+        {
+            return (false, "You must open a shift before completing queued orders.", null);
+        }
+
+        var productIds = order.OrderItems.Select(x => x.ProductId).Distinct().ToArray();
+        var saleProducts = await _db.StoreProducts
+            .AsNoTracking()
+            .Where(x => x.TenantId == tenantId
+                && x.StoreId == order.StoreId
+                && productIds.Contains(x.ProductId)
+                && x.IsAvailable
+                && !x.Product.IsDeleted
+                && x.Product.IsActive)
+            .Select(x => new SaleProductSnapshot(
+                x.ProductId,
+                x.Product.Name,
+                x.Product.Sku,
+                x.SellingPrice ?? x.Product.Price))
+            .ToListAsync(cancellationToken);
+        if (saleProducts.Count != productIds.Length)
+        {
+            return (false, "One or more queued products are no longer available.", null);
+        }
+
+        var inventoryRows = await _db.Inventories
+            .Where(x => x.TenantId == tenantId && x.StoreId == order.StoreId && productIds.Contains(x.ProductId))
+            .ToDictionaryAsync(x => x.ProductId, cancellationToken);
+        foreach (var item in order.OrderItems)
+        {
+            if (!inventoryRows.TryGetValue(item.ProductId, out var inventory) || inventory.Quantity < item.Quantity)
+            {
+                return (false, $"Not enough stock for {item.ProductName}.", null);
+            }
+        }
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+        foreach (var item in order.OrderItems)
+        {
+            var inventory = inventoryRows[item.ProductId];
+            var before = inventory.Quantity;
+            inventory.Quantity -= item.Quantity;
+            inventory.UpdatedAt = DateTime.UtcNow;
+            inventory.UpdatedBy = userId;
+
+            _db.InventoryTransactions.Add(new InventoryTransaction
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                StoreId = order.StoreId,
+                ProductId = item.ProductId,
+                Type = InventoryTransactionTypes.Sale,
+                Quantity = item.Quantity,
+                BeforeQuantity = before,
+                AfterQuantity = inventory.Quantity,
+                Reason = $"POS queued sale {order.OrderCode}",
+                ReferenceType = nameof(Order),
+                ReferenceId = order.Id.ToString(),
+                CreatedBy = userId,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        var oldValue = $"Status={order.OrderStatus}; PaymentStatus={order.PaymentStatus}";
+        order.OrderStatus = OrderStatuses.Completed;
+        order.PaymentStatus = OrderPaymentStatuses.Paid;
+        order.StaffUserId = userId;
+        order.ShiftId = openShift.Id;
+        order.UpdatedAt = DateTime.UtcNow;
+        order.UpdatedBy = userId;
+
+        var payment = order.Payments.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
+        if (payment is null)
+        {
+            _db.Payments.Add(new Payment
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                OrderId = order.Id,
+                Method = PaymentMethods.Cash,
+                Amount = order.TotalAmount,
+                PaidAt = DateTime.UtcNow,
+                Status = PaymentStatuses.Paid,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            payment.Status = PaymentStatuses.Paid;
+            payment.PaidAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        await _auditLog.LogAsync(
+            "CompletePendingOrder",
+            nameof(Order),
+            order.Id.ToString(),
+            oldValue,
+            $"Status={order.OrderStatus}; PaymentStatus={order.PaymentStatus}",
+            tenantId,
+            order.StoreId,
+            cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        var productMap = saleProducts.ToDictionary(x => x.ProductId);
+        var validItems = order.OrderItems
+            .Select(x => new PosCartItemInputModel { ProductId = x.ProductId, Quantity = x.Quantity })
+            .ToList();
         await NotifyCheckoutRealtimeAsync(
             tenantId,
-            storeId,
+            order.StoreId,
             userId,
             order,
             validItems,
@@ -322,6 +508,66 @@ public sealed class PosService : IPosService
         return (true, null, order.Id);
     }
 
+    public async Task<(bool Succeeded, string? Error)> CancelPendingOrderAsync(
+        Guid orderId,
+        CancellationToken cancellationToken = default)
+    {
+        var tenantId = RequireTenantId();
+        var userId = RequireUserId();
+        var order = await _db.Orders
+            .Include(x => x.Payments)
+            .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.Id == orderId, cancellationToken);
+        if (order is null)
+        {
+            return (false, "Pending order not found.");
+        }
+
+        if (!await _storeAccess.CanAccessStoreAsync(order.StoreId, cancellationToken))
+        {
+            return (false, "You do not have access to this order.");
+        }
+
+        if (order.OrderStatus != OrderStatuses.New || order.PaymentStatus != OrderPaymentStatuses.Unpaid)
+        {
+            return (false, "Only unpaid queued orders can be cancelled.");
+        }
+
+        var oldValue = $"Status={order.OrderStatus}; PaymentStatus={order.PaymentStatus}";
+        order.OrderStatus = OrderStatuses.Cancelled;
+        order.PaymentStatus = OrderPaymentStatuses.Cancelled;
+        order.CancelledAt = DateTime.UtcNow;
+        order.CancelledBy = userId;
+        order.UpdatedAt = DateTime.UtcNow;
+        order.UpdatedBy = userId;
+        foreach (var payment in order.Payments)
+        {
+            payment.Status = PaymentStatuses.Cancelled;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        await _auditLog.LogAsync(
+            "CancelPendingOrder",
+            nameof(Order),
+            order.Id.ToString(),
+            oldValue,
+            $"Status={order.OrderStatus}; PaymentStatus={order.PaymentStatus}",
+            tenantId,
+            order.StoreId,
+            cancellationToken);
+        await _realtimeNotifier.OrderCancelledAsync(
+            new OrderCancelledEvent(
+                tenantId,
+                order.StoreId,
+                order.Id,
+                order.OrderCode,
+                order.PaymentStatus,
+                order.OrderStatus,
+                order.CancelledAt ?? DateTime.UtcNow),
+            cancellationToken);
+
+        return (true, null);
+    }
+
     private async Task NotifyCheckoutRealtimeAsync(
         Guid tenantId,
         Guid storeId,
@@ -330,6 +576,50 @@ public sealed class PosService : IPosService
         IReadOnlyList<PosCartItemInputModel> validItems,
         IReadOnlyDictionary<Guid, SaleProductSnapshot> productMap,
         IReadOnlyDictionary<Guid, Models.Inventory> inventoryRows,
+        CancellationToken cancellationToken)
+    {
+        await NotifyOrderRealtimeAsync(
+            tenantId,
+            storeId,
+            userId,
+            order,
+            validItems.Count,
+            cancellationToken);
+
+        var store = await _db.Stores
+            .AsNoTracking()
+            .Where(x => x.TenantId == tenantId && x.Id == storeId)
+            .Select(x => new { x.Name, x.Code })
+            .FirstAsync(cancellationToken);
+        foreach (var item in validItems)
+        {
+            var productId = item.ProductId!.Value;
+            var product = productMap[productId];
+            var inventory = inventoryRows[productId];
+            await _realtimeNotifier.InventoryChangedAsync(
+                new InventoryChangedEvent(
+                    tenantId,
+                    storeId,
+                    productId,
+                    store.Name,
+                    store.Code,
+                    product.Name,
+                    product.Sku,
+                    inventory.Quantity,
+                    inventory.MinQuantity,
+                    InventoryTransactionTypes.Sale,
+                    -item.Quantity,
+                    DateTime.UtcNow),
+                cancellationToken);
+        }
+    }
+
+    private async Task NotifyOrderRealtimeAsync(
+        Guid tenantId,
+        Guid storeId,
+        string userId,
+        Order order,
+        int itemCount,
         CancellationToken cancellationToken)
     {
         var store = await _db.Stores
@@ -352,34 +642,12 @@ public sealed class PosService : IPosService
                 store.Name,
                 store.Code,
                 staffName,
-                validItems.Count,
+                itemCount,
                 order.TotalAmount,
                 order.PaymentStatus,
                 order.OrderStatus,
                 order.CreatedAt),
             cancellationToken);
-
-        foreach (var item in validItems)
-        {
-            var productId = item.ProductId!.Value;
-            var product = productMap[productId];
-            var inventory = inventoryRows[productId];
-            await _realtimeNotifier.InventoryChangedAsync(
-                new InventoryChangedEvent(
-                    tenantId,
-                    storeId,
-                    productId,
-                    store.Name,
-                    store.Code,
-                    product.Name,
-                    product.Sku,
-                    inventory.Quantity,
-                    inventory.MinQuantity,
-                    InventoryTransactionTypes.Sale,
-                    -item.Quantity,
-                    DateTime.UtcNow),
-                cancellationToken);
-        }
     }
 
     private sealed record SaleProductSnapshot(Guid ProductId, string Name, string? Sku, decimal Price);

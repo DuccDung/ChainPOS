@@ -1176,14 +1176,24 @@ Khác với `Payments`, bảng này không liên quan đến đơn hàng POS c�
 - `Amount`: số tiền thanh toán.
 - `Method`: phương thức thanh toán.
 - `Status`: trạng thái thanh toán.
+- `TransactionCode`: mã chuyển khoản SePay duy nhất dùng để match webhook.
+- `ProviderTransactionId`: mã tham chiếu giao dịch từ SePay/ngân hàng.
+- `BankCode`, `BankAccountNo`, `BankAccountName`: thông tin tài khoản nhận tiền.
+- `QrContent`: URL ảnh QR SePay.
+- `TransferContent`: nội dung chuyển khoản bắt buộc.
 - `PaidAt`: thời điểm thanh toán thành công.
+- `PaidAmount`: số tiền thực nhận từ webhook.
+- `RawResponse`: JSON SePay raw response hoặc raw webhook gần nhất.
+- `ExpiredAt`: thời điểm hết hạn mã QR.
 - `InvoiceUrl`: đường dẫn hóa đơn subscription.
 - `CreatedAt`: thời điểm tạo.
+- `UpdatedAt`: thời điểm cập nhật gần nhất.
 
 ### Phương thức thanh toán
 
 - `Cash`: tiền mặt.
 - `BankTransfer`: chuyển khoản.
+- `SePay`: thanh toán online bằng QR/webhook SePay.
 - `Card`: thẻ.
 - `Momo`: ví Momo.
 - `ZaloPay`: ví ZaloPay.
@@ -1205,6 +1215,7 @@ Khác với `Payments`, bảng này không liên quan đến đơn hàng POS c�
 ### Index quan trọng
 
 - `IX_SystemPayments_TenantId_PaidAt`: báo cáo doanh thu hệ thống theo tenant và thời gian.
+- `IX_SystemPayments_TransactionCode`: đảm bảo mã chuyển khoản SePay là duy nhất.
 
 ### Lưu ý khi code
 
@@ -1508,4 +1519,3 @@ Mục tiêu:
 - Thanh toán subscription.
 - Báo cáo doanh thu nền tảng.
 - Giới hạn tính năng theo gói.
-

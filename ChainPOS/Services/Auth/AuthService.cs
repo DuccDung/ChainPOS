@@ -148,6 +148,11 @@ public sealed class AuthService : IAuthService
             claims.Add(new Claim(AppClaimTypes.FullName, user.FullName));
         }
 
+        if (!string.IsNullOrWhiteSpace(user.SecurityStamp))
+        {
+            claims.Add(new Claim(AppClaimTypes.SecurityStamp, user.SecurityStamp));
+        }
+
         if (user.TenantId.HasValue)
         {
             claims.Add(new Claim(AppClaimTypes.TenantId, user.TenantId.Value.ToString()));

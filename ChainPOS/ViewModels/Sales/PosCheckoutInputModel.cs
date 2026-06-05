@@ -17,6 +17,9 @@ public sealed class PosCheckoutInputModel
     [StringLength(30)]
     public string PaymentMethod { get; set; } = PaymentMethods.Cash;
 
+    [StringLength(20)]
+    public string CheckoutMode { get; set; } = "pay";
+
     [Range(typeof(decimal), "0", "9999999999999999")]
     public decimal CustomerPaidAmount { get; set; }
 

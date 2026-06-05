@@ -18,5 +18,7 @@ public sealed class PosIndexViewModel
 
     public IReadOnlyList<PosProductViewModel> Products { get; set; } = Array.Empty<PosProductViewModel>();
 
+    public IReadOnlyList<PosPendingOrderViewModel> PendingOrders { get; set; } = Array.Empty<PosPendingOrderViewModel>();
+
     public bool CanCheckout => StoreId.HasValue && OpenShiftId.HasValue;
 }

@@ -27,7 +27,13 @@
         </div>
     </div>
 
-    <div class="bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+    <div class="receipt-shell bg-white rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+        @if (Model.OrderStatus == OrderStatuses.Cancelled)
+        {
+            <div class="border-b border-red-100 bg-red-50 px-6 py-3 text-sm font-semibold text-red-700">
+                Cancelled order - this receipt is void and should not be treated as a paid sales receipt.
+            </div>
+        }
         <div class="bg-gradient-to-r from-orange-500 to-amber-500 p-6 flex justify-between items-start">
             <div>
                 <div class="flex items-center gap-3">
@@ -81,7 +87,19 @@
                         @foreach (var item in Model.Items)
                         {
                             <tr>
-                                <td class="px-5 py-3.5 font-semibold text-gray-900">@item.ProductName</td>
+                                <td class="px-5 py-3.5">
+                                    <div class="flex items-center gap-3">
+                                        @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                                        {
+                                            <img src="@item.ImageUrl" alt="@item.ProductName" class="w-9 h-9 rounded-xl object-cover border border-orange-100 flex-shrink-0" />
+                                        }
+                                        else
+                                        {
+                                            <div class="w-9 h-9 bg-gradient-to-br from-orange-400 to-amber-400 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0">@item.ProductName[0]</div>
+                                        }
+                                        <span class="font-semibold text-gray-900">@item.ProductName</span>
+                                    </div>
+                                </td>
                                 <td class="px-5 py-3.5 font-mono text-xs text-gray-400">@(item.Sku ?? "-")</td>
                                 <td class="px-5 py-3.5 text-right">@item.Quantity.ToString("#,##0.###")</td>
                                 <td class="px-5 py-3.5 text-right">@item.UnitPrice.ToString("#,##0.##")</td>
@@ -97,9 +115,15 @@
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Payments</p>
                     @foreach (var payment in Model.Payments)
                     {
-                        <div class="flex justify-between py-2 border-b border-gray-50 last:border-b-0 text-sm">
-                            <span class="text-gray-600">@payment.Method (@payment.Status)</span>
-                            <span class="font-semibold text-gray-900">@payment.Amount.ToString("#,##0.##")</span>
+                        <div class="py-2 border-b border-gray-50 last:border-b-0 text-sm">
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600">@payment.Method (@payment.Status)</span>
+                                <span class="font-semibold text-gray-900">@payment.Amount.ToString("#,##0.##")</span>
+                            </div>
+                            <div class="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+                                <span>Transaction: @(payment.TransactionCode ?? "-")</span>
+                                <span>Paid at: @(payment.PaidAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</span>
+                            </div>
                         </div>
                     }
                     @if (!string.IsNullOrWhiteSpace(Model.Note))

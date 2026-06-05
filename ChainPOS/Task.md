@@ -1,6 +1,6 @@
 # Task triển khai ChainPOS sau khi Data First
 
-Cập nhật ngày: 2026-05-29
+Cập nhật ngày: 2026-06-05
 
 Tài liệu này là backlog triển khai tiếp theo cho dự án `ChainPOS` sau khi đã scaffold model bằng EF Core từ SQL Server. Trạng thái hiện tại không còn là tạo project từ đầu, mà là phát triển tiếp trên nền database-first đã có.
 
@@ -25,6 +25,7 @@ Tài liệu này là backlog triển khai tiếp theo cho dự án `ChainPOS` sa
 - [x] Admin Subscription Plan/System Payment ở Phase 3.3 và 3.4 đã làm MVP.
 - [x] Có tài liệu nghiệp vụ và hướng dẫn test trực quan tại `BUSINESS_WORKFLOW_TEST_GUIDE.md`.
 - [x] Có realtime SignalR cho inventory, POS order, cancel order, shift, subscription và system payment.
+- [x] Có nghiệp vụ Owner quên mật khẩu bằng OTP gửi qua email SMTP.
 
 ### 0.2. Tài khoản demo
 
@@ -200,6 +201,14 @@ Sau Realtime SignalR đã chạy:
 - HTTP smoke test `/hubs/chainpos/negotiate?negotiateVersion=1` sau login Owner trả 200 và có `connectionToken`.
 - HTTP smoke test `/owner/pos` xác nhận layout load `signalr.min.js`, `realtime.js` và có `data-live-page="pos"`.
 - Test tự động đã assert các service phát realtime event cho import/export/adjust stock, checkout, cancel order và close shift.
+
+Sau Owner forgot password OTP đã chạy:
+
+- `dotnet build .\ChainPOS.sln` thành công, 0 warning, 0 error.
+- `dotnet test .\ChainPOS.sln` thành công, 16 passed, 0 failed.
+- SMTP Gmail được cấu hình qua .NET User Secrets, không lưu app password trong source code.
+- Flow đã có UI `/forgot-password` và `/forgot-password/verify`; OTP lưu hash trong `AspNetUserTokens`, có hạn dùng và giới hạn số lần nhập sai.
+- HTTP smoke test xác nhận `/forgot-password` và `/forgot-password/verify?email=owner%40demo.local` trả 200 và render đúng form chính.
 
 Lưu ý: smoke test có thể để lại dữ liệu ca/order đã đóng/cancel trong database local. Đây là dữ liệu test hợp lệ, không tự ý xóa nếu người dùng không yêu cầu.
 
@@ -478,6 +487,11 @@ Mục tiêu: app đăng nhập được, phân quyền được, có current use
   - `ADMIN`: `/admin/dashboard`
   - `OWNER`: `/owner/dashboard`
   - `STAFF`: `/staff/dashboard`
+- [x] Tạo flow Owner quên mật khẩu: nhập email, gửi OTP, nhập OTP và đổi mật khẩu.
+- [x] Gửi OTP qua SMTP mail service đọc cấu hình từ configuration/User Secrets.
+- [x] Lưu OTP dạng hash trong `AspNetUserTokens`, có thời hạn và giới hạn số lần nhập sai.
+- [x] Ghi audit log `RequestOwnerPasswordResetOtp` và `ResetOwnerPassword`.
+- [x] Link `Quên mật khẩu?` trên màn login chỉ hiển thị khi chọn role Owner.
 
 ### 5.3. Authorization và current context
 
@@ -922,6 +936,7 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 - [x] Không bind entity trực tiếp từ request.
 - [x] Validate server-side đầy đủ.
 - [x] Không log password hoặc `PasswordHash`.
+- [x] Không log OTP; OTP reset password lưu dạng hash và bị xóa sau khi dùng thành công/hết hạn.
 - [x] Không cho upload file ngoài định dạng ảnh.
 - [x] Giới hạn dung lượng upload.
 - [x] Chặn path traversal khi upload.
@@ -982,6 +997,14 @@ Mục tiêu: hoàn thiện các màn hình tổng hợp và vận hành SaaS.
 - [x] Test create order.
 - [x] Test cancel order.
 - [x] Test close shift.
+- [x] Regression build/test sau khi thêm Owner forgot password OTP.
+
+### 14.4. Manual test nên làm tiếp cho Owner forgot password
+
+- [ ] Owner nhập email thật tại `/forgot-password` và nhận được OTP qua Gmail SMTP.
+- [ ] Owner nhập OTP đúng tại `/forgot-password/verify` và đổi mật khẩu thành công.
+- [ ] OTP sai quá số lần cho phép hoặc hết hạn bị chặn.
+- [ ] OTP đã dùng thành công không dùng lại được.
 
 ## 15. Ưu tiên triển khai gần nhất
 
@@ -993,7 +1016,124 @@ Thứ tự nên làm tiếp sau Subscription/Admin billing MVP:
 4. Tự động prepend order/payment mới vào table realtime nếu không muốn reload banner.
 5. Manual smoke test sâu hơn cho tenant expired/suspended và owner không xem tenant khác.
 
-## 16. Definition of Done cho mỗi chức năng
+## 16. Backlog phản hồi nghiệm thu ngày 2026-06-04
+
+Các task dưới đây được lập sau khi rà soát source hiện tại theo phản hồi mới. Các mục đã triển khai và kiểm tra hợp lý được tick theo trạng thái hiện tại.
+
+### 16.1. Search/filter realtime phía client
+
+- [x] Rà soát toàn bộ màn có search/filter: Admin Owners/Tenants/Plans/System Payments/Audit, Owner Stores/Staff/Categories/Products/Store Products/Inventory/POS/Orders/Reports, Staff POS/Inventory/Orders/Shifts.
+- [x] Chuyển các ô search chính sang trải nghiệm realtime/debounce để người dùng không bắt buộc bấm nút Search/Filter.
+- [x] Giữ query string/server filter để reload, back/forward browser và phân quyền vẫn đúng.
+- [x] Thêm loading state nhỏ khi debounce submit hoặc fetch partial.
+- [x] Với các bảng có dữ liệu ít, cân nhắc client-side filter trực tiếp; với bảng lớn, dùng debounce GET/server-side paging.
+
+### 16.2. Payment visibility và payment management
+
+- [x] Làm rõ 2 nhóm payment hiện có: POS `Payments` và SaaS `SystemPayments`.
+- [x] Thêm màn POS Payments cho Owner/Staff để xem payment theo store, order, method, status, transaction code, date.
+- [x] Thêm link Payment dưới nhóm Sales nếu cần, thay vì chỉ thấy payment trong order detail.
+- [x] Bổ sung filter payment theo store, method, status, date, search order code/transaction code.
+- [x] Làm nổi bật payment trên Order list/receipt để người dùng nhìn thấy trạng thái thanh toán ngay.
+- [x] Kiểm tra lại Owner subscription checkout/System Payment để payment SaaS hiển thị đủ action và trạng thái.
+
+### 16.3. Login role quick fill và lỗi hiển thị quyền
+
+- [x] Fix role pill ở màn login để tự điền cả email và password demo đúng role, không chỉ email.
+- [x] Khi bấm lại role, clear validation summary/error cũ và cập nhật trạng thái link quên mật khẩu.
+- [x] Fallback sidebar/topbar lấy role từ claim thật nếu `ViewData["AppRole"]` thiếu hoặc layout render sai.
+- [x] Hardening login redirect theo primary role sau khi cookie đã sign-in thành công.
+- [ ] Thêm smoke test login Admin/Owner/Staff nhiều lần liên tiếp để bắt lỗi quyền không hiển thị.
+
+### 16.4. Bulk import/file upload nhiều bản ghi
+
+- [x] Admin tạo Owner + Tenant hàng loạt bằng CSV/XLSX upload.
+- [x] Owner tạo Staff hàng loạt bằng CSV/XLSX, có gán nhiều store trong file.
+- [x] Owner tạo Store hàng loạt bằng CSV/XLSX.
+- [x] Owner tạo Category/Product hàng loạt bằng CSV/XLSX.
+- [x] Product import hỗ trợ image URL hoặc cơ chế upload nhiều ảnh rồi map theo SKU/barcode.
+- [x] Store Product assignment import hàng loạt theo store code + SKU + selling price + availability.
+- [x] Inventory import hàng loạt theo store code + SKU + quantity/min quantity/reason.
+- [x] Có template tải xuống, validate từng dòng, báo lỗi từng dòng và chế độ partial import rõ ràng.
+- [x] Ghi audit log tổng quan và chi tiết số dòng thành công/thất bại.
+
+### 16.5. Chặn trùng email/số điện thoại
+
+- [x] Chuẩn hóa email và phone trước khi validate.
+- [x] Owner create: chặn trùng `NormalizedEmail`, `NormalizedUserName` và `PhoneNumber`.
+- [x] Staff create: chặn trùng `NormalizedEmail`, `NormalizedUserName` và `PhoneNumber`.
+- [x] Xác định scope phone unique: toàn hệ thống hay trong tenant; sau đó đồng bộ service, thông báo UI và test.
+- [x] Bổ sung handling `DbUpdateException` cho unique index/race condition để không văng lỗi thô.
+- [x] Bổ sung unique index có filter cho phone trong EF mapping và schema SQL.
+
+### 16.6. Audit optimization
+
+- [x] Tối ưu `AuditLogQueryService`: không load toàn bộ action về memory để tính warning/critical.
+- [x] Tính tổng warning/critical/distinct user bằng query SQL riêng hoặc projection tối thiểu.
+- [x] Tránh `Include` khi count; projection trực tiếp sang view model cho page hiện tại.
+- [x] Bổ sung index audit theo `TenantId`, `StoreId`, `UserId`, `Action`, `CreatedAt`.
+- [x] Giới hạn page size hợp lý, giữ server-side paging/filter.
+- [x] Thêm test hoặc smoke test audit với dữ liệu lớn để kiểm tra thời gian phản hồi.
+
+### 16.7. Block user phải revoke token/cookie
+
+- [x] `RefreshUserClaimsCookieEvents.ValidatePrincipal` phải reject cookie nếu user bị locked/inactive, lockout còn hạn, user bị xóa, role bị gỡ hoặc tenant bị suspended/cancelled.
+- [x] Refresh lại role, tenant, fullname/email claim khi validate cookie.
+- [x] Khi lock/unlock/reset password/change role, cập nhật `SecurityStamp` để cookie cũ bị vô hiệu.
+- [x] Kiểm tra SignalR connection của user bị khóa không tiếp tục nhận event sau khi cookie bị reject/reconnect.
+- [x] Thêm regression test: user đang login bị lock thì request kế tiếp bị sign-out/forbid.
+
+### 16.8. Product image hiển thị đầy đủ
+
+- [x] Gán ảnh demo cho các sản phẩm seed để POS/list không còn toàn placeholder.
+- [x] Hiển thị ảnh ở Store Products list, Inventory list, Order detail/receipt và cart POS.
+- [x] Bổ sung fallback ảnh nhất quán nếu sản phẩm chưa có ảnh.
+- [x] Kiểm tra static path `/uploads/products/...` hoạt động sau deploy/publish.
+- [x] Với bulk product import, hỗ trợ map ảnh theo SKU/barcode.
+
+### 16.9. Order queue khi thanh toán lỗi
+
+- [x] Thêm luồng tạo order tạm khi thanh toán lỗi hoặc khách chưa thanh toán xong.
+- [x] Sử dụng trạng thái `OrderStatus = New`/payment `Unpaid` hoặc bổ sung trạng thái pending/held nếu cần schema.
+- [x] POS có khu vực hàng đợi để tạm giữ đơn, xử lý khách tiếp theo, sau đó quay lại retry payment/complete/cancel.
+- [x] Xác định rule giữ kho: reserve tồn khi hold hay chỉ trừ kho khi paid; triển khai nhất quán.
+- [x] Có action retry payment, mark paid, cancel/release queue.
+- [x] Realtime update queue cho các máy POS cùng store.
+- [x] Audit log cho hold order, retry payment, complete pending order, cancel pending order.
+
+### 16.10. Dọn path `/Home/Index`
+
+- [x] Xóa hoặc redirect `HomeController.Index` để `/Home/Index` không còn trang template ASP.NET mặc định.
+- [x] Xóa hoặc redirect `HomeController.Privacy` nếu không dùng.
+- [x] Giữ error handler hoạt động đúng khi production dùng `/Home/Error` hoặc chuyển sang route error mới.
+- [ ] Smoke test `/`, `/Home/Index`, `/login`, dashboard theo role.
+
+### 16.11. Receipt/print optimization
+
+- [x] Tạo CSS `@media print` riêng cho receipt, ẩn sidebar/topbar/action button/toast.
+- [x] Hỗ trợ layout in 80mm hoặc A4 theo thiết lập POS.
+- [x] Tối ưu nội dung receipt: store info, order code, date, cashier, item, qty, unit price, discount, tax, total, payment method/transaction code.
+- [x] Với order cancelled, in rõ trạng thái cancelled và không gây nhầm là hóa đơn paid.
+- [ ] Test print preview trên receipt Owner/Staff.
+
+### 16.12. Realtime websocket targeting và âm thanh thông báo
+
+- [x] Rà soát `SignalRRealtimeNotifier` để tránh gửi quá rộng khiến người dùng thấy như broadcast không cần thiết.
+- [x] Tách event theo platform admin, tenant owner và store staff đúng nhu cầu từng loại event.
+- [x] Client chỉ toast/sound khi event liên quan màn/store hiện tại hoặc theo setting người dùng.
+- [x] Thêm âm thanh notification có toggle bật/tắt; xử lý browser autoplay bằng cách enable sau tương tác đầu tiên.
+- [x] Thêm cấu hình trong Admin Settings/LocalStorage cho realtime sound.
+- [x] Thêm test/manual check cho inventory/order/payment event ở 2 store khác nhau để đảm bảo không nhầm broadcast.
+
+### 16.13. Test hồi quy cho backlog này
+
+- [x] `dotnet build .\ChainPOS.sln`.
+- [x] `dotnet test .\ChainPOS.sln`.
+- [ ] HTTP smoke test login Admin/Owner/Staff.
+- [ ] Manual smoke test POS payment, pending queue, receipt print, realtime sound.
+- [ ] Manual smoke test bulk import với file hợp lệ và file có lỗi.
+
+## 17. Definition of Done cho mỗi chức năng
 
 Một chức năng chỉ coi là xong khi:
 

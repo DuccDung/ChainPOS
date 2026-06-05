@@ -261,41 +261,41 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
         };
     }
 
-    public async Task<(bool Succeeded, string? Error, Guid? SubscriptionId)> CreateTenantSubscriptionAsync(
+    public async Task<(bool Succeeded, string? Error, Guid? SubscriptionId, Guid? PaymentId)> CreateTenantSubscriptionAsync(
         TenantSubscriptionCreateViewModel model,
         string? currentUserId,
         CancellationToken cancellationToken = default)
     {
         if (!model.TenantId.HasValue || !model.PlanId.HasValue)
         {
-            return (false, "Tenant and plan are required.", null);
+            return (false, "Tenant and plan are required.", null, null);
         }
 
         if (!SubscriptionStatuses.All.Contains(model.Status))
         {
-            return (false, "Invalid subscription status.", null);
+            return (false, "Invalid subscription status.", null, null);
         }
 
         if (model.EndDate.HasValue && model.EndDate.Value < model.StartDate)
         {
-            return (false, "End date must be greater than or equal to start date.", null);
+            return (false, "End date must be greater than or equal to start date.", null, null);
         }
 
         if (!PaymentMethodsAllowed(model.PaymentMethod))
         {
-            return (false, "Invalid payment method.", null);
+            return (false, "Invalid payment method.", null, null);
         }
 
         var tenant = await _db.Tenants.FirstOrDefaultAsync(x => x.Id == model.TenantId.Value && !x.IsDeleted, cancellationToken);
         var plan = await _db.SubscriptionPlans.FirstOrDefaultAsync(x => x.Id == model.PlanId.Value && !x.IsDeleted && x.IsActive, cancellationToken);
         if (tenant is null)
         {
-            return (false, "Tenant not found.", null);
+            return (false, "Tenant not found.", null, null);
         }
 
         if (plan is null)
         {
-            return (false, "Active plan not found.", null);
+            return (false, "Active plan not found.", null, null);
         }
 
         await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
@@ -307,7 +307,7 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
         foreach (var subscription in currentSubscriptions)
         {
             subscription.Status = SubscriptionStatuses.Expired;
-            subscription.EndDate = model.StartDate.AddDays(-1);
+            subscription.EndDate = ResolvePreviousSubscriptionEndDate(subscription, model.StartDate);
             subscription.UpdatedAt = DateTime.UtcNow;
             subscription.UpdatedBy = currentUserId;
         }
@@ -381,7 +381,7 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
                 cancellationToken);
         }
 
-        return (true, null, newSubscription.Id);
+        return (true, null, newSubscription.Id, pendingPayment?.Id);
     }
 
     public async Task<SystemPaymentIndexViewModel> GetSystemPaymentsAsync(
@@ -413,6 +413,8 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
             query = query.Where(x =>
                 x.Tenant.Name.Contains(trimmedSearch)
                 || x.Subscription.Plan.Name.Contains(trimmedSearch)
+                || (x.TransactionCode != null && x.TransactionCode.Contains(trimmedSearch))
+                || (x.TransferContent != null && x.TransferContent.Contains(trimmedSearch))
                 || (x.InvoiceUrl != null && x.InvoiceUrl.Contains(trimmedSearch)));
         }
 
@@ -454,7 +456,9 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
 
         var oldValue = PaymentAuditValue(payment);
         payment.Status = PaymentStatuses.Paid;
+        payment.PaidAmount ??= payment.Amount;
         payment.PaidAt = DateTime.UtcNow;
+        payment.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
         await _auditLog.LogAsync(
@@ -488,6 +492,7 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
         var oldValue = PaymentAuditValue(payment);
         payment.Status = PaymentStatuses.Failed;
         payment.PaidAt = null;
+        payment.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
         await _auditLog.LogAsync(
@@ -611,9 +616,18 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
             Amount = payment.Amount,
             Method = payment.Method,
             Status = payment.Status,
+            TransactionCode = payment.TransactionCode,
+            TransferContent = payment.TransferContent,
+            QrImageUrl = payment.QrContent,
+            ExpiredAt = payment.ExpiredAt,
             PaidAt = payment.PaidAt,
+            PaidAmount = payment.PaidAmount,
             InvoiceUrl = payment.InvoiceUrl,
-            CreatedAt = payment.CreatedAt
+            CreatedAt = payment.CreatedAt,
+            IsSePay = string.Equals(payment.Method, PaymentMethods.SePay, StringComparison.OrdinalIgnoreCase),
+            IsExpired = !string.Equals(payment.Status, PaymentStatuses.Paid, StringComparison.OrdinalIgnoreCase)
+                && payment.ExpiredAt.HasValue
+                && payment.ExpiredAt.Value < DateTime.UtcNow
         };
     }
 
@@ -660,7 +674,20 @@ public sealed class SubscriptionManagementService : ISubscriptionManagementServi
         => $"TenantId={payment.TenantId}; Amount={payment.Amount:#,##0.##}; Status={payment.Status}; PaidAt={payment.PaidAt?.ToString("O") ?? "-"}";
 
     private static bool PaymentMethodsAllowed(string method)
-        => method is PaymentMethods.Cash or PaymentMethods.BankTransfer or PaymentMethods.Card or PaymentMethods.Momo or PaymentMethods.ZaloPay or PaymentMethods.Other;
+        => method is PaymentMethods.Cash or PaymentMethods.BankTransfer or PaymentMethods.SePay or PaymentMethods.Card or PaymentMethods.Momo or PaymentMethods.ZaloPay or PaymentMethods.Other;
+
+    private static DateOnly ResolvePreviousSubscriptionEndDate(
+        TenantSubscription subscription,
+        DateOnly newStartDate)
+    {
+        var previousDay = newStartDate > DateOnly.MinValue
+            ? newStartDate.AddDays(-1)
+            : newStartDate;
+
+        return previousDay < subscription.StartDate
+            ? subscription.StartDate
+            : previousDay;
+    }
 
     private Guid RequireTenantId()
     {

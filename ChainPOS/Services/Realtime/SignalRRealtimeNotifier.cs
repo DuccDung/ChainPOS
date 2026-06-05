@@ -30,27 +30,47 @@ public sealed class SignalRRealtimeNotifier : IRealtimeNotifier
     public Task SystemPaymentChangedAsync(SystemPaymentChangedEvent payload, CancellationToken cancellationToken = default)
         => TenantEventAsync(payload.TenantId, "SystemPaymentChanged", payload, cancellationToken);
 
-    private Task StoreEventAsync<TPayload>(
+    private async Task StoreEventAsync<TPayload>(
         Guid tenantId,
         Guid storeId,
         string eventName,
         TPayload payload,
         CancellationToken cancellationToken)
-        => _hubContext.Clients
-            .Groups(
+    {
+        await SendBestEffortAsync(
+            _hubContext.Clients.Groups(
                 RealtimeGroups.PlatformAdmins,
-                RealtimeGroups.Tenant(tenantId),
-                RealtimeGroups.Store(tenantId, storeId))
-            .SendAsync(eventName, payload, cancellationToken);
+                RealtimeGroups.Store(tenantId, storeId)),
+            eventName,
+            payload);
+    }
 
-    private Task TenantEventAsync<TPayload>(
+    private async Task TenantEventAsync<TPayload>(
         Guid tenantId,
         string eventName,
         TPayload payload,
         CancellationToken cancellationToken)
-        => _hubContext.Clients
-            .Groups(
+    {
+        await SendBestEffortAsync(
+            _hubContext.Clients.Groups(
                 RealtimeGroups.PlatformAdmins,
-                RealtimeGroups.Tenant(tenantId))
-            .SendAsync(eventName, payload, cancellationToken);
+                RealtimeGroups.Tenant(tenantId)),
+            eventName,
+            payload);
+    }
+
+    private static async Task SendBestEffortAsync<TPayload>(
+        IClientProxy clientProxy,
+        string eventName,
+        TPayload payload)
+    {
+        try
+        {
+            await clientProxy.SendAsync(eventName, payload, CancellationToken.None);
+        }
+        catch (OperationCanceledException)
+        {
+            // Realtime fan-out is best-effort and should not fail a committed write.
+        }
+    }
 }

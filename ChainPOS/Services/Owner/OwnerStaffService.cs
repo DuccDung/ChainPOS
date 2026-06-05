@@ -99,12 +99,24 @@ public sealed class OwnerStaffService : IOwnerStaffService
     {
         var tenantId = RequireTenantId();
         var normalizedEmail = Normalize(model.Email);
+        var normalizedPhone = NormalizePhone(model.PhoneNumber);
         var exists = await _db.AspNetUsers.AnyAsync(
             x => x.NormalizedEmail == normalizedEmail || x.NormalizedUserName == normalizedEmail,
             cancellationToken);
         if (exists)
         {
             return (false, "Email already exists.", null);
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedPhone))
+        {
+            var phoneExists = await _db.AspNetUsers.AnyAsync(
+                x => x.PhoneNumber == normalizedPhone,
+                cancellationToken);
+            if (phoneExists)
+            {
+                return (false, "Phone number already exists.", null);
+            }
         }
 
         var maxStaff = await GetMaxStaffAsync(tenantId, cancellationToken);
@@ -128,6 +140,8 @@ public sealed class OwnerStaffService : IOwnerStaffService
             return (false, "One or more selected stores are invalid.", null);
         }
 
+        try
+        {
         await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
 
         var role = await EnsureRoleAsync(AppRoles.Staff, cancellationToken);
@@ -140,7 +154,7 @@ public sealed class OwnerStaffService : IOwnerStaffService
             Email = model.Email.Trim(),
             NormalizedEmail = normalizedEmail,
             EmailConfirmed = true,
-            PhoneNumber = TrimToNull(model.PhoneNumber),
+            PhoneNumber = normalizedPhone,
             FullName = model.FullName.Trim(),
             Status = UserStatuses.Active,
             TenantId = tenantId,
@@ -182,6 +196,11 @@ public sealed class OwnerStaffService : IOwnerStaffService
 
         await transaction.CommitAsync(cancellationToken);
         return (true, null, staff.Id);
+        }
+        catch (DbUpdateException)
+        {
+            return (false, "Email or phone number already exists.", null);
+        }
     }
 
     public async Task<StaffDetailsViewModel?> GetStaffDetailsAsync(
@@ -307,6 +326,7 @@ public sealed class OwnerStaffService : IOwnerStaffService
         staff.Status = status;
         staff.UpdatedAt = DateTime.UtcNow;
         staff.UpdatedBy = _currentUser.UserId;
+        staff.SecurityStamp = Guid.NewGuid().ToString("N");
         if (string.Equals(status, UserStatuses.Locked, StringComparison.OrdinalIgnoreCase))
         {
             staff.LockoutEnd = DateTimeOffset.UtcNow.AddYears(100);
@@ -500,6 +520,17 @@ public sealed class OwnerStaffService : IOwnerStaffService
     }
 
     private static string Normalize(string value) => value.Trim().ToUpperInvariant();
+
+    private static string? NormalizePhone(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var normalized = new string(value.Where(c => char.IsDigit(c) || c == '+').ToArray());
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
 
     private static string? TrimToNull(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

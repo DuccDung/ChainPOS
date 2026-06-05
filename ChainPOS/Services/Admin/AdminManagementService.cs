@@ -149,6 +149,7 @@ public sealed class AdminManagementService : IAdminManagementService
         CancellationToken cancellationToken = default)
     {
         var normalizedEmail = Normalize(model.Email);
+        var normalizedPhone = NormalizePhone(model.PhoneNumber);
         var exists = await _db.AspNetUsers.AnyAsync(
             x => x.NormalizedEmail == normalizedEmail || x.NormalizedUserName == normalizedEmail,
             cancellationToken);
@@ -157,6 +158,19 @@ public sealed class AdminManagementService : IAdminManagementService
             return (false, "Email already exists.");
         }
 
+        if (!string.IsNullOrWhiteSpace(normalizedPhone))
+        {
+            var phoneExists = await _db.AspNetUsers.AnyAsync(
+                x => x.PhoneNumber == normalizedPhone,
+                cancellationToken);
+            if (phoneExists)
+            {
+                return (false, "Phone number already exists.");
+            }
+        }
+
+        try
+        {
         await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
 
         var role = await EnsureRoleAsync(AppRoles.Owner, cancellationToken);
@@ -169,7 +183,7 @@ public sealed class AdminManagementService : IAdminManagementService
             Email = model.Email.Trim(),
             NormalizedEmail = normalizedEmail,
             EmailConfirmed = true,
-            PhoneNumber = TrimToNull(model.PhoneNumber),
+            PhoneNumber = normalizedPhone,
             FullName = model.FullName.Trim(),
             Status = UserStatuses.Active,
             LockoutEnabled = true,
@@ -191,7 +205,7 @@ public sealed class AdminManagementService : IAdminManagementService
             OwnerUserId = owner.Id,
             TaxCode = TrimToNull(model.TaxCode),
             Address = TrimToNull(model.TenantAddress),
-            Phone = TrimToNull(model.TenantPhone),
+            Phone = NormalizePhone(model.TenantPhone),
             Email = model.Email.Trim(),
             Status = TenantStatuses.Active,
             CreatedAt = now,
@@ -223,6 +237,11 @@ public sealed class AdminManagementService : IAdminManagementService
 
         await transaction.CommitAsync(cancellationToken);
         return (true, null);
+        }
+        catch (DbUpdateException)
+        {
+            return (false, "Email or phone number already exists.");
+        }
     }
 
     public async Task<(bool Succeeded, string? Error)> SetOwnerStatusAsync(
@@ -249,6 +268,7 @@ public sealed class AdminManagementService : IAdminManagementService
         owner.Status = status;
         owner.UpdatedAt = DateTime.UtcNow;
         owner.UpdatedBy = currentUserId;
+        owner.SecurityStamp = Guid.NewGuid().ToString("N");
 
         if (string.Equals(status, UserStatuses.Locked, StringComparison.OrdinalIgnoreCase))
         {
@@ -437,6 +457,17 @@ public sealed class AdminManagementService : IAdminManagementService
     }
 
     private static string Normalize(string value) => value.Trim().ToUpperInvariant();
+
+    private static string? NormalizePhone(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var normalized = new string(value.Where(c => char.IsDigit(c) || c == '+').ToArray());
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
 
     private static string? TrimToNull(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

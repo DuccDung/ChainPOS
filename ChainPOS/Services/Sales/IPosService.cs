@@ -13,4 +13,12 @@ public interface IPosService
     Task<(bool Succeeded, string? Error, Guid? OrderId)> CheckoutAsync(
         PosCheckoutInputModel model,
         CancellationToken cancellationToken = default);
+
+    Task<(bool Succeeded, string? Error, Guid? OrderId)> CompletePendingOrderAsync(
+        Guid orderId,
+        CancellationToken cancellationToken = default);
+
+    Task<(bool Succeeded, string? Error)> CancelPendingOrderAsync(
+        Guid orderId,
+        CancellationToken cancellationToken = default);
 }

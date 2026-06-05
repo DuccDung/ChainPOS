@@ -38,4 +38,30 @@ public sealed class PosController : Controller
         TempData["SuccessMessage"] = "Order created.";
         return RedirectToAction("Details", "Orders", new { area = AreaName, id = result.OrderId.Value });
     }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CompleteQueuedOrder(Guid id, Guid? storeId, CancellationToken cancellationToken)
+    {
+        var result = await _posService.CompletePendingOrderAsync(id, cancellationToken);
+        if (!result.Succeeded || !result.OrderId.HasValue)
+        {
+            TempData["ErrorMessage"] = result.Error ?? "Could not complete queued order.";
+            return RedirectToAction(nameof(Index), new { storeId });
+        }
+
+        TempData["SuccessMessage"] = "Queued order completed.";
+        return RedirectToAction("Details", "Orders", new { area = AreaName, id = result.OrderId.Value });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelQueuedOrder(Guid id, Guid? storeId, CancellationToken cancellationToken)
+    {
+        var result = await _posService.CancelPendingOrderAsync(id, cancellationToken);
+        TempData[result.Succeeded ? "SuccessMessage" : "ErrorMessage"] =
+            result.Succeeded ? "Queued order cancelled." : result.Error ?? "Could not cancel queued order.";
+
+        return RedirectToAction(nameof(Index), new { storeId });
+    }
 }

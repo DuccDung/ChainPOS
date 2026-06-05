@@ -621,6 +621,7 @@ public static class DevelopmentDataSeeder
                     Description = seed.Description,
                     Price = seed.Price,
                     CostPrice = seed.CostPrice,
+                    ImageUrl = GetDemoProductImageUrl(seed.Sku),
                     IsActive = seed.IsActive,
                     CreatedAt = DateTime.UtcNow,
                     CreatedBy = owner.Id
@@ -635,6 +636,9 @@ public static class DevelopmentDataSeeder
                 product.Description = seed.Description;
                 product.Price = seed.Price;
                 product.CostPrice = seed.CostPrice;
+                product.ImageUrl = string.IsNullOrWhiteSpace(product.ImageUrl)
+                    ? GetDemoProductImageUrl(seed.Sku)
+                    : product.ImageUrl;
                 product.IsActive = seed.IsActive;
                 product.IsDeleted = false;
                 product.UpdatedAt = DateTime.UtcNow;
@@ -646,6 +650,17 @@ public static class DevelopmentDataSeeder
 
         await db.SaveChangesAsync(cancellationToken);
         return products;
+    }
+
+    private static string GetDemoProductImageUrl(string sku)
+    {
+        var demoImages = new[]
+        {
+            "/uploads/products/9127b6f76a6d4ab79f7cc233c9ab4720.png",
+            "/uploads/products/13c6e981e4d14fcc8fdf3df4ef0992bc.png"
+        };
+        var index = (int)((uint)StringComparer.OrdinalIgnoreCase.GetHashCode(sku) % demoImages.Length);
+        return demoImages[index];
     }
 
     private static async Task<Dictionary<string, StoreProduct>> EnsureDemoStoreProductsAsync(

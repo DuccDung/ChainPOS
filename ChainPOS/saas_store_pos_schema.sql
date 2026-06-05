@@ -589,19 +589,84 @@ BEGIN
         [Amount] DECIMAL(18,2) NOT NULL,
         [Method] NVARCHAR(30) NOT NULL,
         [Status] NVARCHAR(30) NOT NULL CONSTRAINT [DF_SystemPayments_Status] DEFAULT (N'Pending'),
+        [TransactionCode] NVARCHAR(100) NULL,
+        [ProviderTransactionId] NVARCHAR(100) NULL,
+        [BankCode] NVARCHAR(50) NULL,
+        [BankAccountNo] NVARCHAR(50) NULL,
+        [BankAccountName] NVARCHAR(255) NULL,
+        [QrContent] NVARCHAR(1000) NULL,
+        [TransferContent] NVARCHAR(255) NULL,
         [PaidAt] DATETIME2(7) NULL,
+        [PaidAmount] DECIMAL(18,2) NULL,
+        [RawResponse] NVARCHAR(MAX) NULL,
+        [ExpiredAt] DATETIME2(7) NULL,
         [InvoiceUrl] NVARCHAR(500) NULL,
         [CreatedAt] DATETIME2(7) NOT NULL CONSTRAINT [DF_SystemPayments_CreatedAt] DEFAULT (SYSUTCDATETIME()),
+        [UpdatedAt] DATETIME2(7) NULL,
         CONSTRAINT [PK_SystemPayments] PRIMARY KEY ([Id]),
         CONSTRAINT [FK_SystemPayments_TenantSubscriptions_SubscriptionId]
             FOREIGN KEY ([SubscriptionId]) REFERENCES [dbo].[TenantSubscriptions] ([Id]),
         CONSTRAINT [FK_SystemPayments_Tenants_TenantId]
             FOREIGN KEY ([TenantId]) REFERENCES [dbo].[Tenants] ([Id]),
         CONSTRAINT [CK_SystemPayments_Method]
-            CHECK ([Method] IN (N'Cash', N'BankTransfer', N'Card', N'Momo', N'ZaloPay', N'Other')),
+            CHECK ([Method] IN (N'Cash', N'BankTransfer', N'SePay', N'Card', N'Momo', N'ZaloPay', N'Other')),
         CONSTRAINT [CK_SystemPayments_Status]
             CHECK ([Status] IN (N'Pending', N'Paid', N'Failed', N'Refunded', N'Cancelled')),
         CONSTRAINT [CK_SystemPayments_Amount] CHECK ([Amount] > 0)
+    );
+END;
+GO
+
+IF OBJECT_ID(N'[dbo].[SystemPayments]', N'U') IS NOT NULL
+BEGIN
+    IF COL_LENGTH(N'dbo.SystemPayments', N'TransactionCode') IS NULL
+        ALTER TABLE [dbo].[SystemPayments] ADD [TransactionCode] NVARCHAR(100) NULL;
+    IF COL_LENGTH(N'dbo.SystemPayments', N'ProviderTransactionId') IS NULL
+        ALTER TABLE [dbo].[SystemPayments] ADD [ProviderTransactionId] NVARCHAR(100) NULL;
+    IF COL_LENGTH(N'dbo.SystemPayments', N'BankCode') IS NULL
+        ALTER TABLE [dbo].[SystemPayments] ADD [BankCode] NVARCHAR(50) NULL;
+    IF COL_LENGTH(N'dbo.SystemPayments', N'BankAccountNo') IS NULL
+        ALTER TABLE [dbo].[SystemPayments] ADD [BankAccountNo] NVARCHAR(50) NULL;
+    IF COL_LENGTH(N'dbo.SystemPayments', N'BankAccountName') IS NULL
+        ALTER TABLE [dbo].[SystemPayments] ADD [BankAccountName] NVARCHAR(255) NULL;
+    IF COL_LENGTH(N'dbo.SystemPayments', N'QrContent') IS NULL
+        ALTER TABLE [dbo].[SystemPayments] ADD [QrContent] NVARCHAR(1000) NULL;
+    IF COL_LENGTH(N'dbo.SystemPayments', N'TransferContent') IS NULL
+        ALTER TABLE [dbo].[SystemPayments] ADD [TransferContent] NVARCHAR(255) NULL;
+    IF COL_LENGTH(N'dbo.SystemPayments', N'PaidAmount') IS NULL
+        ALTER TABLE [dbo].[SystemPayments] ADD [PaidAmount] DECIMAL(18,2) NULL;
+    IF COL_LENGTH(N'dbo.SystemPayments', N'RawResponse') IS NULL
+        ALTER TABLE [dbo].[SystemPayments] ADD [RawResponse] NVARCHAR(MAX) NULL;
+    IF COL_LENGTH(N'dbo.SystemPayments', N'ExpiredAt') IS NULL
+        ALTER TABLE [dbo].[SystemPayments] ADD [ExpiredAt] DATETIME2(7) NULL;
+    IF COL_LENGTH(N'dbo.SystemPayments', N'UpdatedAt') IS NULL
+        ALTER TABLE [dbo].[SystemPayments] ADD [UpdatedAt] DATETIME2(7) NULL;
+
+    IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE [name] = N'CK_SystemPayments_Method' AND [parent_object_id] = OBJECT_ID(N'[dbo].[SystemPayments]'))
+        ALTER TABLE [dbo].[SystemPayments] DROP CONSTRAINT [CK_SystemPayments_Method];
+
+    ALTER TABLE [dbo].[SystemPayments] WITH CHECK ADD CONSTRAINT [CK_SystemPayments_Method]
+        CHECK ([Method] IN (N'Cash', N'BankTransfer', N'SePay', N'Card', N'Momo', N'ZaloPay', N'Other'));
+END;
+GO
+
+IF OBJECT_ID(N'[dbo].[SystemPaymentWebhooks]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[SystemPaymentWebhooks] (
+        [Id] UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_SystemPaymentWebhooks_Id] DEFAULT (NEWSEQUENTIALID()),
+        [SystemPaymentId] UNIQUEIDENTIFIER NULL,
+        [Gateway] NVARCHAR(30) NOT NULL CONSTRAINT [DF_SystemPaymentWebhooks_Gateway] DEFAULT (N'sepay'),
+        [EventType] NVARCHAR(50) NULL,
+        [ReferenceCode] NVARCHAR(100) NULL,
+        [ContentTransfer] NVARCHAR(1000) NULL,
+        [Amount] DECIMAL(18,2) NULL,
+        [RawPayload] NVARCHAR(MAX) NOT NULL,
+        [IsProcessed] BIT NOT NULL CONSTRAINT [DF_SystemPaymentWebhooks_IsProcessed] DEFAULT (0),
+        [ProcessedAt] DATETIME2(7) NULL,
+        [CreatedAt] DATETIME2(7) NOT NULL CONSTRAINT [DF_SystemPaymentWebhooks_CreatedAt] DEFAULT (SYSUTCDATETIME()),
+        CONSTRAINT [PK_SystemPaymentWebhooks] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_SystemPaymentWebhooks_SystemPayments_SystemPaymentId]
+            FOREIGN KEY ([SystemPaymentId]) REFERENCES [dbo].[SystemPayments] ([Id])
     );
 END;
 GO
@@ -670,6 +735,10 @@ GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_AspNetUsers_TenantId' AND [object_id] = OBJECT_ID(N'[dbo].[AspNetUsers]'))
     CREATE INDEX [IX_AspNetUsers_TenantId] ON [dbo].[AspNetUsers] ([TenantId]);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'UX_AspNetUsers_PhoneNumber' AND [object_id] = OBJECT_ID(N'[dbo].[AspNetUsers]'))
+    CREATE UNIQUE INDEX [UX_AspNetUsers_PhoneNumber] ON [dbo].[AspNetUsers] ([PhoneNumber]) WHERE [PhoneNumber] IS NOT NULL;
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_Tenants_OwnerUserId' AND [object_id] = OBJECT_ID(N'[dbo].[Tenants]'))
@@ -765,12 +834,39 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_SystemPayments_Tena
     CREATE INDEX [IX_SystemPayments_TenantId_PaidAt] ON [dbo].[SystemPayments] ([TenantId], [PaidAt]);
 GO
 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_SystemPayments_TransactionCode' AND [object_id] = OBJECT_ID(N'[dbo].[SystemPayments]'))
+    CREATE UNIQUE INDEX [IX_SystemPayments_TransactionCode] ON [dbo].[SystemPayments] ([TransactionCode]) WHERE [TransactionCode] IS NOT NULL;
+GO
+
+IF OBJECT_ID(N'[dbo].[SystemPaymentWebhooks]', N'U') IS NOT NULL
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_SystemPaymentWebhooks_SystemPaymentId' AND [object_id] = OBJECT_ID(N'[dbo].[SystemPaymentWebhooks]'))
+        CREATE INDEX [IX_SystemPaymentWebhooks_SystemPaymentId] ON [dbo].[SystemPaymentWebhooks] ([SystemPaymentId]);
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_SystemPaymentWebhooks_IsProcessed' AND [object_id] = OBJECT_ID(N'[dbo].[SystemPaymentWebhooks]'))
+        CREATE INDEX [IX_SystemPaymentWebhooks_IsProcessed] ON [dbo].[SystemPaymentWebhooks] ([IsProcessed]);
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_SystemPaymentWebhooks_ReferenceCode' AND [object_id] = OBJECT_ID(N'[dbo].[SystemPaymentWebhooks]'))
+        CREATE INDEX [IX_SystemPaymentWebhooks_ReferenceCode] ON [dbo].[SystemPaymentWebhooks] ([ReferenceCode]);
+END;
+GO
+
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_AuditLogs_TenantId_UserId_CreatedAt' AND [object_id] = OBJECT_ID(N'[dbo].[AuditLogs]'))
     CREATE INDEX [IX_AuditLogs_TenantId_UserId_CreatedAt] ON [dbo].[AuditLogs] ([TenantId], [UserId], [CreatedAt]);
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_AuditLogs_TenantId_StoreId_CreatedAt' AND [object_id] = OBJECT_ID(N'[dbo].[AuditLogs]'))
     CREATE INDEX [IX_AuditLogs_TenantId_StoreId_CreatedAt] ON [dbo].[AuditLogs] ([TenantId], [StoreId], [CreatedAt]);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_AuditLogs_TenantId_Action_CreatedAt' AND [object_id] = OBJECT_ID(N'[dbo].[AuditLogs]'))
+    CREATE INDEX [IX_AuditLogs_TenantId_Action_CreatedAt] ON [dbo].[AuditLogs] ([TenantId], [Action], [CreatedAt]);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_AuditLogs_TenantId_CreatedAt' AND [object_id] = OBJECT_ID(N'[dbo].[AuditLogs]'))
+    CREATE INDEX [IX_AuditLogs_TenantId_CreatedAt] ON [dbo].[AuditLogs] ([TenantId], [CreatedAt]);
 GO
 
 /* ============================================================
@@ -873,4 +969,3 @@ GROUP BY
     sp.[TenantId],
     CAST(sp.[PaidAt] AS DATE);
 GO
-

@@ -69,6 +69,7 @@ public sealed class OwnerStoreProductService : IOwnerStoreProductService
                 StoreCode = x.Store.Code,
                 ProductId = x.ProductId,
                 ProductName = x.Product.Name,
+                ImageUrl = x.Product.ImageUrl,
                 Sku = x.Product.Sku,
                 CategoryName = x.Product.Category != null ? x.Product.Category.Name : null,
                 BasePrice = x.Product.Price,

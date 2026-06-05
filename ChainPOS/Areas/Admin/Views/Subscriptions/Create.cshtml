@@ -76,6 +76,7 @@
             <div>
                 <label asp-for="PaymentMethod" class="block text-xs font-semibold text-gray-600 mb-1.5"></label>
                 <select asp-for="PaymentMethod" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white">
+                    <option value="@PaymentMethods.SePay">SePay</option>
                     <option value="@PaymentMethods.BankTransfer">BankTransfer</option>
                     <option value="@PaymentMethods.Card">Card</option>
                     <option value="@PaymentMethods.Momo">Momo</option>
